@@ -5,9 +5,14 @@ import pydeck as pdk
 import pickle
 import yaml
 import os
+import sys
+
+# Windows compatibility fix for shap/pyspark
+if sys.platform == "win32":
+    from unittest.mock import MagicMock
+    sys.modules["pyspark"] = MagicMock()
 
 # Set up local imports
-import sys
 from pathlib import Path
 project_root = str(Path(__file__).resolve().parent)
 if project_root not in sys.path:
@@ -98,9 +103,9 @@ def prototype_xai_result(segment_id):
 
 @st.cache_resource
 def load_config():
-    with open(DATA_CFG_PATH) as f:
+    with open(DATA_CFG_PATH, encoding="utf-8") as f:
         data_cfg = yaml.safe_load(f)
-    with open(MODEL_CFG_PATH) as f:
+    with open(MODEL_CFG_PATH, encoding="utf-8") as f:
         model_cfg = yaml.safe_load(f)
     return data_cfg, model_cfg
 
