@@ -25,7 +25,7 @@ CONFIG_PATH = "configs/data_sources.yaml"
 
 
 def load_config(path=CONFIG_PATH):
-    with open(path) as f:
+    with open(path, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     seg = cfg["road_segments"]
     feat = cfg["features"]
@@ -92,7 +92,7 @@ def main():
 
     # All POI count within buffer
     print(f"  POI count within {buf}m...")
-    centroids["poi_count_200m"] = count_within_buffer(centroids, poi_raw, buf)
+    centroids[f"poi_count_{buf}m"] = count_within_buffer(centroids, poi_raw, buf)
 
     # Distance to specific POI types
     poi_targets = {
@@ -113,12 +113,12 @@ def main():
     print(f"Computing building density within {buf}m...")
     bldg = gpd.read_file(cfg["buildings"]).to_crs(crs)
     bldg["geometry"] = bldg.geometry.centroid
-    centroids["building_density_200m"] = count_within_buffer(centroids, bldg, buf)
+    centroids[f"building_density_{buf}m"] = count_within_buffer(centroids, bldg, buf)
 
     # --- Save ---
-    feat_cols = ["segment_id", "dist_intersection_m", "poi_count_200m",
+    feat_cols = ["segment_id", "dist_intersection_m", f"poi_count_{buf}m",
                  "dist_school_m", "dist_hospital_m", "dist_fuel_m",
-                 "dist_mall_m", "building_density_200m"]
+                 "dist_mall_m", f"building_density_{buf}m"]
     feat = centroids[feat_cols].copy()
     # Round distances to 1 decimal
     for col in feat_cols[1:]:

@@ -3,7 +3,7 @@ import tarfile
 import requests
 import pandas as pd
 import geopandas as gpd
-from shapely.geometry import points_from_xy
+from geopandas import points_from_xy
 import yaml
 
 BASE_URL = "https://itic.longdo.com/opendata/probe-data"
@@ -71,7 +71,7 @@ def download_file(url, file_path, retries=5):
 
 
 def load_config(config_path="configs/data_sources.yaml"):
-    with open(config_path, "r") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
@@ -79,8 +79,10 @@ def main():
     os.makedirs(RAW_DIR, exist_ok=True)
     os.makedirs(OUT_DIR, exist_ok=True)
 
-    config = load_config()
+    config = load_config("configs/data_inventory.yaml")
     years = [d["year"] for d in config["datasets"]]
+
+    config = load_config("configs/data_sources.yaml")
     boundary, bbox = load_boundary(config["boundary"]["bangkok"])
 
     files = [

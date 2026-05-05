@@ -4,6 +4,7 @@ Use the output to decide what values to put in configs/data_sources.yaml.
 
 Output: data/raw/osm_schema.csv
 """
+import os
 import osmnx as ox
 import pandas as pd
 
@@ -57,6 +58,8 @@ def main():
             all_pairs.append({"key": key, "value": val, "count": count})
 
     output_path = "data/raw/osm/osm_schema.csv"
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
     pd.DataFrame(all_pairs).to_csv(output_path, index=False)
     print(f"\nSaved → {output_path}")
 

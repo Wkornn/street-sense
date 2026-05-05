@@ -18,7 +18,7 @@ CONFIG_PATH = "configs/data_sources.yaml"
 
 
 def load_config(path=CONFIG_PATH):
-    with open(path) as f:
+    with open(path, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     seg = cfg["road_segments"]
     acc = cfg["accidents"]
