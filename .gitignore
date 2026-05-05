@@ -38,7 +38,7 @@ data/processed/*
 
 # Allow features folder
 !data/processed/features/
-data/processed/features/*
+# data/processed/features/*
 !data/processed/features/model_dataset.parquet
 
 # Allow results folder
@@ -47,3 +47,5 @@ data/processed/results/*
 !data/processed/results/risk_scores_v2_xgboost.parquet
 !data/processed/results/risk_scores_v3.parquet
 !data/processed/results/historical_hotspots.gpkg
+!data/processed/results/risk_scores_v4.parquet
+!data/processed/results/risk_scores_v4.csv
