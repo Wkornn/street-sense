@@ -38,7 +38,7 @@ boundary:
 
 features:
   output_dir: "data/processed/features"
-  buffer_m: 200
+  buffer_m: 500
   poi_types:
     amenity: [school, hospital, university, fuel]
     shop: [mall, supermarket]

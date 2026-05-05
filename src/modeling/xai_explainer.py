@@ -36,7 +36,7 @@ DATA_CFG_PATH  = "configs/data_sources.yaml"
 MODEL_CFG_PATH = "configs/model_params.yaml"
 
 def load_yaml(path):
-    with open(path) as f:
+    with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 def explain_segment(segment_id, df, calibrated_model, features, top_k=5):

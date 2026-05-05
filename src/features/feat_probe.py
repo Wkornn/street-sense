@@ -20,7 +20,7 @@ def _get_time_bin(hour):
     else:                 return "late_night"
 
 def load_config(path=CONFIG_PATH):
-    with open(path) as f:
+    with open(path, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     seg  = cfg["road_segments"]
     feat = cfg["features"]

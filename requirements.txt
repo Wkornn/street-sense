@@ -11,3 +11,10 @@ pyarrow
 fastparquet
 google-generativeai
 python-dotenv
+osmnx
+scikit-fuzzy
+imbalanced-learn
+optuna
+requests
+rtree
+pyogrio

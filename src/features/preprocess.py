@@ -24,7 +24,7 @@ TIME_BINS = ["morning_peak", "daytime", "evening_peak", "night", "late_night"]
 
 
 def load_yaml(path):
-    with open(path) as f:
+    with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 

@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore")
 CONFIG_PATH = "configs/model_params.yaml"
 
 def load_yaml(path):
-    with open(path) as f:
+    with open(path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 # ---------------------------------------------------------
