@@ -35,6 +35,7 @@ data/processed/*
 
 # Whitelist root processed files
 !data/processed/road_segments.gpkg
+!data/processed/accidents_snapped.gpkg
 
 # Allow features folder
 !data/processed/features/
@@ -46,6 +47,5 @@ data/processed/*
 data/processed/results/*
 !data/processed/results/risk_scores_v2_xgboost.parquet
 !data/processed/results/risk_scores_v3.parquet
-!data/processed/results/historical_hotspots.gpkg
 !data/processed/results/risk_scores_v4.parquet
 !data/processed/results/risk_scores_v4.csv

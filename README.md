@@ -44,7 +44,7 @@ python scripts/run_pipeline.py --all
 
 ### 4. Training Models
 ```bash
-python src/modeling/train_classification.py --version v2
+python src/modeling/v2_binary_classification.py
 ```
 
 ### 5. Launch the Dashboard
@@ -53,7 +53,6 @@ streamlit run app.py
 ```
 
 ## 🧠 Core Components
-- **Hotspot Analysis**: Statistical cluster detection using Getis-Ord Gi*.
 - **Predictive Risk Scoring**: XGBoost-based models calibrated for probability-based risk assessment.
 - **Explainable AI (XAI)**: SHAP-based feature importance integrated with Gemini LLM for human-readable risk narratives.
 

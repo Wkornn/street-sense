@@ -31,9 +31,9 @@ MODEL_CFG_PATH = "configs/model_params.yaml"
 
 RISK_SCORES_PATH = Path("data/processed/results/risk_scores_v2_xgboost.parquet")
 SEGMENTS_PATH = Path("data/processed/road_segments.gpkg")
-HOTSPOTS_PATH = Path("data/processed/results/historical_hotspots.gpkg")
 MODEL_DATASET_PATH = Path("data/processed/features/model_dataset.parquet")
 MODEL_PATH = Path("models/xgboost_v2_xgboost.pkl")
+SNAPPED_ACCIDENTS_PATH = Path("data/processed/accidents_snapped.gpkg")
 
 
 def missing_paths(*paths):
@@ -80,14 +80,6 @@ def prototype_risk_data():
         },
     ]
     return pd.DataFrame(records)
-
-
-def prototype_hotspot_data():
-    data = prototype_risk_data().head(3).copy()
-    data["acc_total"] = [14, 9, 7]
-    data["gi_zscore"] = [3.4, 2.7, 2.2]
-    data["color"] = [[139, 0, 0, 255]] * len(data)
-    return data
 
 
 def prototype_xai_result(segment_id):
@@ -140,17 +132,11 @@ def load_risk_data(threshold=0.15):
     return gdf_filtered.drop(columns=['geometry'])
 
 @st.cache_data
-def load_hotspots():
-    """Loads historical hotspots."""
-    if not HOTSPOTS_PATH.exists():
-        return prototype_hotspot_data()
-    hotspots = gpd.read_file(HOTSPOTS_PATH)
-    if "is_hotspot" in hotspots.columns:
-        hotspots = hotspots[hotspots["is_hotspot"] == 1].copy()
-    hotspots = hotspots.to_crs("EPSG:4326")
-    hotspots['path'] = hotspots['geometry'].apply(lambda geom: [[c[0], c[1]] for c in geom.coords])
-    hotspots['color'] = hotspots.apply(lambda _: [190, 30, 30, 180], axis=1)
-    return hotspots
+def load_segments():
+    """Loads all road segments for mapping."""
+    if not SEGMENTS_PATH.exists():
+        return None
+    return gpd.read_file(SEGMENTS_PATH, columns=['segment_id', 'geometry'])
 
 @st.cache_data
 def load_xai_data():
@@ -167,6 +153,24 @@ def load_xai_data():
     features = [f for f in model_cfg["modeling"]["features_v2"] if f in df.columns]
     return df, model, features, model_cfg
 
+@st.cache_data
+def load_historical_accidents():
+    """Loads pre-snapped accident data."""
+    if not SNAPPED_ACCIDENTS_PATH.exists():
+        return None
+    
+    # Load data
+    gdf = gpd.read_file(SNAPPED_ACCIDENTS_PATH)
+    
+    # Ensure time columns are numeric
+    gdf['year'] = pd.to_numeric(gdf['year'], errors='coerce')
+    gdf['month'] = pd.to_numeric(gdf['month'], errors='coerce')
+    gdf['hour'] = pd.to_numeric(gdf['hour'], errors='coerce')
+    
+    # Transform to WGS84 for visualization
+    gdf = gdf.to_crs("EPSG:4326")
+    return gdf
+
 # -----------------------------------------------------------------------------
 # Main Application
 # -----------------------------------------------------------------------------
@@ -180,7 +184,7 @@ def main():
     
     mode = st.sidebar.radio("Navigation", [
         "1. Predictive Risk Map",
-        "2. Historical Hotspots",
+        "2. Historical Map",
         "3. Explainable AI (XAI)"
     ])
 
@@ -238,41 +242,155 @@ def main():
             
             st.pydeck_chart(r)
 
-    elif mode == "2. Historical Hotspots":
-        st.header("🔥 Historical Hotspots (Getis-Ord Gi*)")
-        st.markdown("Statistically significant spatial clusters of historical accidents.")
-
-        if not HOTSPOTS_PATH.exists():
-            st.info("Prototype hotspot data is being shown because the hotspot analysis output is missing.")
+    elif mode == "2. Historical Map":
+        st.header("📍 Historical Map Visualization")
         
-        with st.spinner("Loading Hotspot Data..."):
-            hotspots = load_hotspots()
-            if hotspots is None:
-                st.warning("No hotspot data found. Please run the hotspot analysis script first.")
-                return
-            if hotspots.empty:
-                st.warning("No statistically significant hotspot segments found.")
-                return
+        accidents = load_historical_accidents()
+        if accidents is None:
+            st.error(f"Historical accident data not found at {SNAPPED_ACCIDENTS_PATH}. Please run the pipeline first.")
+            return
 
-            st.caption(f"Currently displaying {len(hotspots):,} significant hotspot segments.")
-                
-            layer = pdk.Layer(
-                "PathLayer",
-                hotspots,
+        # ---------------------------------------------------------
+        # Filters
+        # ---------------------------------------------------------
+        with st.expander("🛠️ Advanced Filters", expanded=True):
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                available_years = sorted(accidents['year'].dropna().unique().astype(int))
+                selected_years = st.multiselect("Select Year(s)", available_years, default=available_years)
+            
+            with col2:
+                months = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun", 
+                          7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
+                selected_month_ids = st.multiselect("Select Month(s)", options=list(months.keys()), 
+                                                   format_func=lambda x: months[x], default=list(months.keys()))
+            
+            with col3:
+                hour_range = st.slider("Hour of Day (0-23)", 0, 23, (0, 23))
+
+        # Apply Filters
+        filtered_acc = accidents[
+            (accidents['year'].isin(selected_years)) & 
+            (accidents['month'].isin(selected_month_ids)) &
+            (accidents['hour'] >= hour_range[0]) &
+            (accidents['hour'] <= hour_range[1])
+        ].copy()
+
+        if filtered_acc.empty:
+            st.warning("No accidents found matching the selected filters.")
+            return
+
+        # ---------------------------------------------------------
+        # Metrics & Summary
+        # ---------------------------------------------------------
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Total Accidents", f"{len(filtered_acc):,}")
+        
+        # Most frequent cause
+        if 'บริเวณที่เกิดเหตุ' in filtered_acc.columns:
+            top_loc = filtered_acc['บริเวณที่เกิดเหตุ'].mode()
+            m2.metric("Common Area Type", top_loc[0] if not top_loc.empty else "N/A")
+            
+        # Peak Hour
+        peak_h = filtered_acc['hour'].mode()
+        m3.metric("Peak Hour", f"{int(peak_h[0])}:00" if not peak_h.empty else "N/A")
+
+        # ---------------------------------------------------------
+        # Map Visualization
+        # ---------------------------------------------------------
+        st.subheader("Accident Density Map")
+        
+        # Data preparation for PyDeck
+        filtered_acc['lng'] = filtered_acc.geometry.x
+        filtered_acc['lat'] = filtered_acc.geometry.y
+        
+        # Layer Selection
+        map_style = st.radio("Visualization Style", ["Heatmap", "Hexagon Grid", "Individual Points", "Road Segments"], horizontal=True)
+        
+        layers = []
+        if map_style == "Heatmap":
+            layers.append(pdk.Layer(
+                "HeatmapLayer",
+                data=filtered_acc,
+                get_position=["lng", "lat"],
+                radius_pixels=30,
+                intensity=1,
+                threshold=0.1,
+            ))
+        elif map_style == "Hexagon Grid":
+            layers.append(pdk.Layer(
+                "HexagonLayer",
+                data=filtered_acc,
+                get_position=["lng", "lat"],
+                radius=150,
+                elevation_scale=10,
+                elevation_range=[0, 1000],
                 pickable=True,
-                get_color="color",
-                width_scale=8,
-                width_min_pixels=1,
-                get_path="path",
-                get_width=2,
-            )
-            view_state = pdk.ViewState(latitude=13.7563, longitude=100.5018, zoom=11, pitch=0, bearing=0)
-            r = pdk.Deck(
-                layers=[layer],
-                initial_view_state=view_state,
-                tooltip={"text": "Segment ID: {segment_id}\nTotal Historical Accidents: {acc_total}\nZ-Score: {gi_zscore}"}
-            )
-            st.pydeck_chart(r)
+                extruded=True,
+            ))
+        elif map_style == "Road Segments":
+            with st.spinner("Aggregating accidents to road segments..."):
+                # 1. Aggregate filtered accidents by segment_id
+                acc_counts = filtered_acc.groupby('segment_id').size().reset_index(name='acc_count')
+                
+                # 2. Load road segments (cached)
+                segments = load_segments()
+                if segments is None:
+                    st.error("Road segments data not found.")
+                    return
+                
+                gdf_merged = segments.merge(acc_counts, on='segment_id', how='inner')
+                gdf_merged = gdf_merged.to_crs("EPSG:4326")
+                
+                # Convert to path for PyDeck
+                gdf_merged['path'] = gdf_merged['geometry'].apply(lambda geom: [[c[0], c[1]] for c in geom.coords])
+                
+                # Color scale (Yellow to Red)
+                max_c = gdf_merged['acc_count'].max()
+                def get_agg_color(count):
+                    if count > max_c * 0.7: return [255, 0, 0, 255]
+                    if count > max_c * 0.3: return [255, 165, 0, 220]
+                    return [255, 255, 0, 180]
+                
+                gdf_merged['color'] = gdf_merged['acc_count'].apply(get_agg_color)
+                
+                layers.append(pdk.Layer(
+                    "PathLayer",
+                    gdf_merged,
+                    pickable=True,
+                    get_color="color",
+                    width_scale=20,
+                    width_min_pixels=2,
+                    get_path="path",
+                    get_width=5,
+                ))
+        else:
+            layers.append(pdk.Layer(
+                "ScatterplotLayer",
+                data=filtered_acc,
+                get_position=["lng", "lat"],
+                get_color=[255, 60, 60, 160],
+                get_radius=20,
+                pickable=True,
+            ))
+
+        view_state = pdk.ViewState(latitude=13.7563, longitude=100.5018, zoom=11, pitch=45 if map_style=="Hexagon Grid" else 0)
+        
+        # Tooltip handling
+        if map_style == "Road Segments":
+            tooltip = {"text": "Segment ID: {segment_id}\nFiltered Accidents: {acc_count}"}
+        elif map_style == "Individual Points":
+            tooltip = {"text": "Accident Info\nYear: {year}\nSeverity: {severity_label}"}
+        else:
+            tooltip = True
+
+        r = pdk.Deck(
+            layers=layers,
+            initial_view_state=view_state,
+            tooltip=tooltip
+        )
+        st.pydeck_chart(r)
 
     elif mode == "3. Explainable AI (XAI)":
         st.header("🧠 Explainable AI (XAI)")
