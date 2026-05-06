@@ -85,7 +85,7 @@ def main():
     expl_cfg = model_cfg.get("explanation", {})
     should_narrate = args.narrative if args.narrative is not None else expl_cfg.get("enable_narrative", False)
     top_k = expl_cfg.get("top_k_features", 5)
-    llm_model = expl_cfg.get("llm_model", "gemini-1.5-flash")
+    llm_model = expl_cfg.get("llm_model", "gemini-2.5-flash")
 
     # 2. Load Dataset
     features_dir = data_cfg["features"]["output_dir"]

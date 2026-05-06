@@ -7,6 +7,10 @@ import numpy as np
 import yaml
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load environment variables (e.g., GEMINI_API_KEY)
+load_dotenv()
 
 # Windows compatibility fix for shap/pyspark
 if sys.platform == "win32":
@@ -101,7 +105,7 @@ def prototype_xai_result(segment_id):
     }
     return risk_score, top_factors
 
-@st.cache_resource
+@st.cache_data
 def load_config():
     with open(DATA_CFG_PATH, encoding="utf-8") as f:
         data_cfg = yaml.safe_load(f)
@@ -209,8 +213,19 @@ def load_historical_accidents():
 # Main Application
 # -----------------------------------------------------------------------------
 def main():
-    st.sidebar.title("🚦 H-Spot Bangkok")
-    st.sidebar.markdown("Urban Traffic Risk Assessment")
+    st.sidebar.title("🚦 Street-Sense")
+    st.sidebar.markdown("Bangkok Road Risk Assessment")
+
+    # Load configuration at the start
+    data_cfg, model_cfg = load_config()
+
+    # Handle map selection from session state (prevents multiple refreshes)
+    if "risk_map" in st.session_state:
+        event = st.session_state.risk_map
+        if event and event.get("selection") and event["selection"].get("objects"):
+            selection_objs = event["selection"]["objects"]
+            if "risk-paths" in selection_objs and selection_objs["risk-paths"]:
+                st.session_state.selected_segment_id = selection_objs["risk-paths"][0]["segment_id"]
 
     prototype_missing = missing_paths(RISK_SCORES_PATH, SEGMENTS_PATH, MODEL_DATASET_PATH, MODEL_PATH)
     if prototype_missing:
@@ -229,6 +244,18 @@ def main():
         st.session_state.current_mode = mode
         if "selected_segment_id" in st.session_state:
             del st.session_state.selected_segment_id
+
+    # Sidebar Filters
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("⚙️ Map Filters")
+    risk_threshold = st.sidebar.slider(
+        "Min Risk Level (%)",
+        min_value=0,
+        max_value=100,
+        value=20,
+        step=5,
+        help="Filter road segments by their predicted risk percentage."
+    )
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### Legend")
@@ -262,22 +289,25 @@ def main():
                     st.sidebar.bar_chart(plot_df.set_index('Feature')['Impact'])
                     
                     # AI Narrative
-                    st.markdown("### AI Narrative Explanation")
-                    should_narrate = False if is_prototype_xai else xai_model_cfg.get("explanation", {}).get("enable_narrative", False)
+                    st.markdown("### 🤖 AI Narrative Explanation")
                     
-                    if is_prototype_xai:
-                        st.sidebar.info(
-                            "Prototype narrative: this segment is flagged mainly because sample congestion, nearby activity density, "
-                            "and morning speed drop increase the synthetic risk score."
-                        )
-                    elif should_narrate:
-                        if os.environ.get("GEMINI_API_KEY"):
-                            llm_model = xai_model_cfg.get("explanation", {}).get("llm_model", "gemini-1.5-flash")
-                            narrative = generate_explanation(sid, risk_score, top_factors, llm_model)
-                            if narrative:
-                                st.sidebar.info(narrative)
-                        else:
-                            st.sidebar.warning("GEMINI_API_KEY not found.")
+                    if os.environ.get("GEMINI_API_KEY"):
+                        llm_model = model_cfg.get("explanation", {}).get("llm_model", "gemini-1.5-flash")
+                        
+                        if st.button("✨ Generate AI Narrative"):
+                            with st.spinner("Consulting AI..."):
+                                stream_gen = generate_explanation(sid, risk_score, top_factors, llm_model, stream=True)
+                                if stream_gen:
+                                    st.write_stream(stream_gen)
+                                else:
+                                    st.error("Could not initialize AI Narrative stream.")
+                    else:
+                        st.warning("GEMINI_API_KEY not found. AI Narrative is disabled.")
+                        if is_prototype_xai:
+                            st.info(
+                                "Prototype narrative (Static): this segment is flagged mainly because sample congestion, nearby activity density, "
+                                "and morning speed drop increase the synthetic risk score."
+                            )
                 except Exception as e:
                     st.sidebar.error(f"Analysis error: {e}")
             
@@ -289,13 +319,14 @@ def main():
     st.sidebar.markdown("### System")
     if st.sidebar.button("Clear App Cache"):
         st.cache_data.clear()
+        st.cache_resource.clear()
         st.rerun()
     
     data_cfg, model_cfg = load_config()
 
     if mode == "1. Predictive Risk Map":
         st.header("🔮 Predictive Risk Map")
-        st.markdown("Showing all road segments. Click a segment to analyze.")
+        st.markdown(f"Showing segments with risk ≥ **{risk_threshold}%**. Click a segment to analyze.")
 
         if missing_paths(RISK_SCORES_PATH, SEGMENTS_PATH):
             st.info("Prototype map data is being shown because processed risk scores or road segments are missing.")
@@ -303,8 +334,11 @@ def main():
         with st.spinner("Loading Map Data..."):
             gdf = load_risk_data()
             
+            # Apply Filter
+            gdf = gdf[gdf['risk_pct'] >= risk_threshold]
+            
             if gdf.empty:
-                st.warning("No road segments found.")
+                st.warning(f"No road segments found with risk ≥ {risk_threshold}%.")
                 return
             
             st.caption(f"Currently displaying {len(gdf):,} segments.")
@@ -331,15 +365,8 @@ def main():
                 tooltip={"text": "Segment ID: {segment_id}\nRisk Score: {risk_pct}%\nAccidents: {historical_accidents}"}
             )
             
-            # Handle selection
-            event = st.pydeck_chart(r, on_select="rerun", selection_mode="single-object", use_container_width=True)
-            
-            if event and event.get("selection") and event["selection"].get("objects"):
-                selection_objs = event["selection"]["objects"]
-                if "risk-paths" in selection_objs and selection_objs["risk-paths"]:
-                    selected_obj = selection_objs["risk-paths"][0]
-                    st.session_state.selected_segment_id = selected_obj["segment_id"]
-                    st.rerun()
+            # Selection is now handled at the top of main() via 'key="risk_map"'
+            st.pydeck_chart(r, on_select="rerun", selection_mode="single-object", use_container_width=True, key="risk_map")
 
     elif mode == "2. Historical Map":
         st.header("📍 Historical Map Visualization")
