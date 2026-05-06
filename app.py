@@ -124,10 +124,11 @@ def load_risk_data():
     # Merge and transform to WGS84 for PyDeck
     gdf = segments.merge(scores, on="segment_id", how="inner")
     
-    # Join with accident history
+    # Join with accident history (exclude unsnapped accidents: segment_id == -1)
     accidents = load_historical_accidents()
     if accidents is not None:
-        acc_counts = accidents.groupby('segment_id').size().reset_index(name='historical_accidents')
+        snapped_only = accidents[accidents['segment_id'] != -1]
+        acc_counts = snapped_only.groupby('segment_id').size().reset_index(name='historical_accidents')
         gdf = gdf.merge(acc_counts, on='segment_id', how='left')
         gdf['historical_accidents'] = gdf['historical_accidents'].fillna(0)
     else:
@@ -151,10 +152,10 @@ def load_risk_data():
 
 @st.cache_data
 def load_segments():
-    """Loads all road segments for mapping."""
+    """Loads all road segments for mapping. Returns a copy to protect the cache."""
     if not SEGMENTS_PATH.exists():
         return None
-    return gpd.read_file(SEGMENTS_PATH, columns=['segment_id', 'geometry'])
+    return gpd.read_file(SEGMENTS_PATH, columns=['segment_id', 'geometry']).copy()
 
 @st.cache_data
 def load_xai_data():
@@ -477,39 +478,72 @@ def main():
             ))
         elif map_style == "Road Segments":
             with st.spinner("Aggregating accidents to road segments..."):
-                # 1. Aggregate filtered accidents by segment_id
-                acc_counts = filtered_acc.groupby('segment_id').size().reset_index(name='acc_count')
+                # 1. Exclude unsnapped accidents (segment_id == -1 means GPS couldn't be matched to a road)
+                snapped_acc = filtered_acc[filtered_acc['segment_id'] != -1]
+                unsnapped_count = len(filtered_acc) - len(snapped_acc)
+                if unsnapped_count > 0:
+                    st.info(
+                        f"ℹ️ **{unsnapped_count:,} accident(s)** could not be matched to a road segment "
+                        f"(GPS too far from any road, >50m) and are excluded from this view. "
+                        f"They still appear in the Heatmap."
+                    )
+
+                # 2. Aggregate matched accidents by segment_id
+                acc_counts = snapped_acc.groupby('segment_id').size().reset_index(name='acc_count')
                 
-                # 2. Load road segments (cached)
+                # 3. Load road segments (cached)
                 segments = load_segments()
                 if segments is None:
                     st.error("Road segments data not found.")
                     return
                 
                 gdf_merged = segments.merge(acc_counts, on='segment_id', how='inner')
+
+                if gdf_merged.empty:
+                    st.warning("No road segments matched the filtered accidents. Try widening the date or time filters.")
+                    return
+
                 gdf_merged = gdf_merged.to_crs("EPSG:4326")
-                
-                # Convert to path for PyDeck
-                gdf_merged['path'] = gdf_merged['geometry'].apply(lambda geom: [[c[0], c[1]] for c in geom.coords])
-                
-                # Color scale (Yellow to Red)
-                max_c = gdf_merged['acc_count'].max()
+
+                # Convert to path for PyDeck — must extract coords BEFORE passing to PyDeck
+                # because PyDeck cannot serialize Shapely geometry objects
+                gdf_merged['path'] = gdf_merged['geometry'].apply(
+                    lambda geom: [[c[0], c[1]] for c in geom.coords]
+                )
+
+                # Percentile-based color scale so mid-density areas are also visible
+                p70 = float(gdf_merged['acc_count'].quantile(0.70))
+                p30 = float(gdf_merged['acc_count'].quantile(0.30))
+                max_c = int(gdf_merged['acc_count'].max())
+
                 def get_agg_color(count):
-                    if count > max_c * 0.7: return [255, 0, 0, 255]
-                    if count > max_c * 0.3: return [255, 165, 0, 220]
-                    return [255, 255, 0, 180]
-                
+                    if count >= p70: return [220, 30, 30, 255]    # Red   — top 30%
+                    if count >= p30: return [255, 140, 0, 230]    # Orange — middle 40%
+                    return [255, 230, 50, 180]                    # Yellow — bottom 30%
+
+                def get_width(count):
+                    return max(3, min(12, int(3 + 9 * (count / max_c))))
+
                 gdf_merged['color'] = gdf_merged['acc_count'].apply(get_agg_color)
-                
+                gdf_merged['line_width'] = gdf_merged['acc_count'].apply(get_width)
+
+                st.caption(
+                    f"Showing **{len(gdf_merged):,} road segments** with accidents. "
+                    f"Red ≥ {p70:.0f} · Orange ≥ {p30:.0f} · Yellow = 1+"
+                )
+
+                # ⚠️ Drop geometry column — PyDeck cannot serialize Shapely objects
+                plot_df = gdf_merged.drop(columns=['geometry'])
+
                 layers.append(pdk.Layer(
                     "PathLayer",
-                    gdf_merged,
+                    plot_df,
                     pickable=True,
                     get_color="color",
                     width_scale=1,
-                    width_min_pixels=1,
+                    width_min_pixels=2,
                     get_path="path",
-                    get_width=3,
+                    get_width="line_width",
                 ))
         else:
             layers.append(pdk.Layer(

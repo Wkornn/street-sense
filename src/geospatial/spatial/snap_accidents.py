@@ -25,7 +25,7 @@ def load_config(path=CONFIG_PATH):
     return {
         "segments_path":  seg["output"],
         "accidents_path": acc["clean_parquet"],
-        "output_path":    seg["snapped_accidents_output"],
+        "output_path":    "data/processed/accidents_snapped.parquet",
         "boundary":       cfg["boundary"]["bangkok"],
         "max_dist_m":     seg["snap_max_distance_m"],
         "crs":            seg["projected_crs"],
