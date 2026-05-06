@@ -1,4 +1,4 @@
-# 🚦 H-Spot Bangkok
+# 🚦 Street Sense Bangkok
 **Spatio-Temporal Accident Risk and Causality Assessment in Bangkok Using Machine Learning and Urban Context Features**
 
 H-Spot is a predictive analytics platform designed to identify, analyze, and explain traffic accident hotspots in Bangkok. It combines historical accident data, OpenStreetMap (OSM) road networks, and probe-based traffic data to build high-precision risk models.
