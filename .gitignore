@@ -35,7 +35,7 @@ data/processed/*
 
 # Whitelist root processed files
 !data/processed/road_segments.gpkg
-!data/processed/accidents_snapped.gpkg
+!data/processed/accidents_snapped.parquet
 
 # Allow features folder
 !data/processed/features/

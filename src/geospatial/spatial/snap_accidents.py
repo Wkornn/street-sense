@@ -24,7 +24,7 @@ def load_config(path=CONFIG_PATH):
     acc = cfg["accidents"]
     return {
         "segments_path":  seg["output"],
-        "accidents_path": acc["clean_gpkg"],
+        "accidents_path": acc["clean_parquet"],
         "output_path":    seg["snapped_accidents_output"],
         "boundary":       cfg["boundary"]["bangkok"],
         "max_dist_m":     seg["snap_max_distance_m"],
@@ -76,7 +76,7 @@ def main():
     bkk_geom = boundary.to_crs(cfg["crs"]).union_all()
 
     print("Loading accidents...")
-    accidents = gpd.read_file(cfg["accidents_path"])
+    accidents = gpd.read_parquet(cfg["accidents_path"])
     accidents = accidents.to_crs(cfg["crs"])
     # Filter to accidents actually inside Bangkok polygon
     accidents = accidents[accidents.geometry.within(bkk_geom)].copy()
@@ -92,7 +92,7 @@ def main():
     print(f"  Avg snap distance: {snapped['snap_dist_m'].mean():.1f}m")
 
     os.makedirs(os.path.dirname(cfg["output_path"]) or ".", exist_ok=True)
-    snapped.to_file(cfg["output_path"], driver="GPKG")
+    snapped.to_parquet(cfg["output_path"], index=False)
     print(f"  Saved → {cfg['output_path']}")
 
 

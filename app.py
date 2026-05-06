@@ -33,7 +33,8 @@ RISK_SCORES_PATH = Path("data/processed/results/risk_scores_v2_xgboost.parquet")
 SEGMENTS_PATH = Path("data/processed/road_segments.gpkg")
 MODEL_DATASET_PATH = Path("data/processed/features/model_dataset.parquet")
 MODEL_PATH = Path("models/xgboost_v2_xgboost.pkl")
-SNAPPED_ACCIDENTS_PATH = Path("data/processed/accidents_snapped.gpkg")
+SNAPPED_ACCIDENTS_PATH = Path("data/processed/accidents_snapped.parquet")
+
 
 
 def missing_paths(*paths):
@@ -160,12 +161,15 @@ def load_historical_accidents():
         return None
     
     # Load data
-    gdf = gpd.read_file(SNAPPED_ACCIDENTS_PATH)
+    gdf = gpd.read_parquet(SNAPPED_ACCIDENTS_PATH)
     
     # Ensure time columns are numeric
     gdf['year'] = pd.to_numeric(gdf['year'], errors='coerce')
     gdf['month'] = pd.to_numeric(gdf['month'], errors='coerce')
     gdf['hour'] = pd.to_numeric(gdf['hour'], errors='coerce')
+    
+    if 'วันที่และเวลาที่เกิดเหตุ' in gdf.columns:
+        gdf['วันที่และเวลาที่เกิดเหตุ'] = pd.to_datetime(gdf['วันที่และเวลาที่เกิดเหตุ'])
     
     # Transform to WGS84 for visualization
     gdf = gdf.to_crs("EPSG:4326")
@@ -225,10 +229,10 @@ def main():
                 gdf,
                 pickable=True,
                 get_color="color",
-                width_scale=20,
-                width_min_pixels=2,
+                width_scale=1,
+                width_min_pixels=1,
                 get_path="path",
-                get_width=5,
+                get_width=3,
             )
             
             # Top-down 2D view centered on Bangkok
@@ -257,25 +261,73 @@ def main():
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                available_years = sorted(accidents['year'].dropna().unique().astype(int))
-                selected_years = st.multiselect("Select Year(s)", available_years, default=available_years)
+                # Date Range (Removed strict min/max constraints to avoid Streamlit range errors)
+                min_data_date = accidents['วันที่และเวลาที่เกิดเหตุ'].min().date()
+                max_data_date = accidents['วันที่และเวลาที่เกิดเหตุ'].max().date()
+                
+                date_selection = st.date_input(
+                    "📅 Date Range",
+                    value=(min_data_date, max_data_date)
+                )
             
             with col2:
-                months = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun", 
-                          7: "Jul", 8: "Aug", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"}
-                selected_month_ids = st.multiselect("Select Month(s)", options=list(months.keys()), 
-                                                   format_func=lambda x: months[x], default=list(months.keys()))
-            
+                # Time of Day Filter
+                time_preset = st.selectbox(
+                    "⏰ Time of Day", 
+                    [
+                        "All Day (00:00 - 23:59)", 
+                        "Morning Peak (07:00 - 09:59)", 
+                        "Evening Peak (16:00 - 19:59)", 
+                        "Night (22:00 - 03:59)", 
+                        "Custom Hours"
+                    ]
+                )
+                
+                if time_preset == "Custom Hours":
+                    hour_range = st.slider("Select Hours", 0, 23, (0, 23))
+                elif time_preset == "Morning Peak (07:00 - 09:59)":
+                    hour_range = (7, 9)
+                elif time_preset == "Evening Peak (16:00 - 19:59)":
+                    hour_range = (16, 19)
+                elif time_preset == "Night (22:00 - 03:59)":
+                    hour_range = (22, 3) # Special case handled below
+                else:
+                    hour_range = (0, 23)
+                    
             with col3:
-                hour_range = st.slider("Hour of Day (0-23)", 0, 23, (0, 23))
+                # Severity filter
+                if 'severity_label' in accidents.columns:
+                    severities = accidents['severity_label'].dropna().unique().tolist()
+                    selected_severity = st.multiselect("🚑 Severity", severities, default=severities)
+                else:
+                    selected_severity = None
 
         # Apply Filters
-        filtered_acc = accidents[
-            (accidents['year'].isin(selected_years)) & 
-            (accidents['month'].isin(selected_month_ids)) &
-            (accidents['hour'] >= hour_range[0]) &
-            (accidents['hour'] <= hour_range[1])
-        ].copy()
+        # 1. Handle date_selection
+        if isinstance(date_selection, tuple) and len(date_selection) == 2:
+            start_date, end_date = date_selection
+        else:
+            start_date = date_selection[0] if isinstance(date_selection, tuple) and len(date_selection) > 0 else date_selection
+            end_date = start_date
+
+        start_dt = pd.to_datetime(start_date)
+        end_dt = pd.to_datetime(end_date) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+
+        mask = (accidents['วันที่และเวลาที่เกิดเหตุ'] >= start_dt) & (accidents['วันที่และเวลาที่เกิดเหตุ'] <= end_dt)
+        
+        # 2. Handle Hour Range
+        if time_preset == "Night (22:00 - 03:59)":
+            hour_mask = (accidents['hour'] >= 22) | (accidents['hour'] <= 3)
+        else:
+            hour_mask = (accidents['hour'] >= hour_range[0]) & (accidents['hour'] <= hour_range[1])
+            
+        mask = mask & hour_mask
+        
+        # 3. Handle Severity
+        if selected_severity is not None:
+            mask = mask & (accidents['severity_label'].isin(selected_severity))
+
+        filtered_acc = accidents[mask].copy()
 
         if filtered_acc.empty:
             st.warning("No accidents found matching the selected filters.")
@@ -360,10 +412,10 @@ def main():
                     gdf_merged,
                     pickable=True,
                     get_color="color",
-                    width_scale=20,
-                    width_min_pixels=2,
+                    width_scale=1,
+                    width_min_pixels=1,
                     get_path="path",
-                    get_width=5,
+                    get_width=3,
                 ))
         else:
             layers.append(pdk.Layer(

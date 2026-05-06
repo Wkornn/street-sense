@@ -43,7 +43,7 @@ def main():
     os.makedirs(cfg["output_dir"], exist_ok=True)
 
     print("Loading snapped accidents...")
-    acc = gpd.read_file(cfg["accidents"])
+    acc = gpd.read_parquet(cfg["accidents"])
     acc = acc[acc["segment_id"] != -1].copy()
     print(f"  {len(acc):,} matched accidents")
 
