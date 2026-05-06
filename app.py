@@ -3,6 +3,7 @@ import pandas as pd
 import geopandas as gpd
 import pydeck as pdk
 import pickle
+import numpy as np
 import yaml
 import os
 import sys
@@ -29,12 +30,11 @@ st.set_page_config(page_title="H-Spot Bangkok", layout="wide", initial_sidebar_s
 DATA_CFG_PATH  = "configs/data_sources.yaml"
 MODEL_CFG_PATH = "configs/model_params.yaml"
 
-RISK_SCORES_PATH = Path("data/processed/results/risk_scores_v2_xgboost.parquet")
+RISK_SCORES_PATH = Path("data/processed/results/risk_scores.parquet")
 SEGMENTS_PATH = Path("data/processed/road_segments.gpkg")
 MODEL_DATASET_PATH = Path("data/processed/features/model_dataset.parquet")
-MODEL_PATH = Path("models/xgboost_v2_xgboost.pkl")
+MODEL_PATH = Path("models/xgboost_bi_classification.pkl")
 SNAPPED_ACCIDENTS_PATH = Path("data/processed/accidents_snapped.parquet")
-
 
 
 def missing_paths(*paths):
@@ -48,39 +48,46 @@ def prototype_risk_data():
             "segment_id": 103470,
             "risk_score": 0.68,
             "risk_pct": 68.0,
+            "historical_accidents": 5,
             "path": [[100.4982, 13.7528], [100.5058, 13.7562], [100.5129, 13.7589]],
-            "color": [255, 0, 0, 255],
         },
         {
             "segment_id": 88421,
             "risk_score": 0.42,
             "risk_pct": 42.0,
+            "historical_accidents": 0,
             "path": [[100.5238, 13.7444], [100.5298, 13.7481], [100.5368, 13.7517]],
-            "color": [255, 165, 0, 220],
         },
         {
             "segment_id": 45112,
             "risk_score": 0.31,
             "risk_pct": 31.0,
+            "historical_accidents": 2,
             "path": [[100.4867, 13.7655], [100.4937, 13.7678], [100.5011, 13.7702]],
-            "color": [255, 165, 0, 210],
         },
         {
             "segment_id": 77005,
             "risk_score": 0.23,
             "risk_pct": 23.0,
+            "historical_accidents": 0,
             "path": [[100.5451, 13.7231], [100.5508, 13.7295], [100.5562, 13.7348]],
-            "color": [255, 255, 0, 170],
         },
         {
             "segment_id": 25018,
             "risk_score": 0.18,
             "risk_pct": 18.0,
+            "historical_accidents": 0,
             "path": [[100.4699, 13.7356], [100.4787, 13.7395], [100.4874, 13.7427]],
-            "color": [255, 255, 0, 150],
         },
     ]
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+    
+    def get_color(row):
+        if row['historical_accidents'] > 0: return [255, 75, 75, 255] # Red
+        return [0, 150, 255, 200] # Blue
+        
+    df['color'] = df.apply(get_color, axis=1)
+    return df
 
 
 def prototype_xai_result(segment_id):
@@ -103,34 +110,44 @@ def load_config():
     return data_cfg, model_cfg
 
 @st.cache_data
-def load_risk_data(threshold=0.15):
-    """Loads and merges geometries with risk scores. Filters by threshold to keep map fast."""
+def load_risk_data():
+    """Loads and merges geometries with risk scores. Returns all segments."""
     if missing_paths(RISK_SCORES_PATH, SEGMENTS_PATH):
-        demo = prototype_risk_data()
-        return demo[demo["risk_score"] >= threshold].copy()
+        return prototype_risk_data()
     
     scores = pd.read_parquet(RISK_SCORES_PATH)
+    if 'risk_pct' not in scores.columns:
+        scores['risk_pct'] = (scores['risk_score'] * 100).round(1)
+        
     segments = gpd.read_file(SEGMENTS_PATH, columns=['segment_id', 'geometry'])
     
     # Merge and transform to WGS84 for PyDeck
     gdf = segments.merge(scores, on="segment_id", how="inner")
+    
+    # Join with accident history
+    accidents = load_historical_accidents()
+    if accidents is not None:
+        acc_counts = accidents.groupby('segment_id').size().reset_index(name='historical_accidents')
+        gdf = gdf.merge(acc_counts, on='segment_id', how='left')
+        gdf['historical_accidents'] = gdf['historical_accidents'].fillna(0)
+    else:
+        gdf['historical_accidents'] = 0
+
     gdf = gdf.to_crs("EPSG:4326")
     
-    # Aggressive filtering to prevent MessageSizeError
-    gdf_filtered = gdf[gdf['risk_score'] >= threshold].copy()
-    
     # Convert Linestring to coordinate lists for PyDeck PathLayer
-    gdf_filtered['path'] = gdf_filtered['geometry'].apply(lambda geom: [[c[0], c[1]] for c in geom.coords])
+    gdf['path'] = gdf['geometry'].apply(lambda geom: [[c[0], c[1]] for c in geom.coords])
     
-    # Define colors based on risk
-    def get_color(risk):
-        if risk > 0.5: return [255, 0, 0, 255]      # Red
-        if risk > 0.3: return [255, 165, 0, 200]    # Orange
-        return [255, 255, 0, 150]                   # Yellow
+    # Define colors based on historical accidents (2 categories)
+    def get_color(row):
+        if row['historical_accidents'] > 0:
+            return [255, 75, 75, 220]      # Red (Historical)
+        return [0, 150, 255, 180]          # Blue (No History)
         
-    gdf_filtered['color'] = gdf_filtered['risk_score'].apply(get_color)
+    gdf['color'] = gdf.apply(get_color, axis=1)
+    
     # Drop geometry object to save memory/payload size
-    return gdf_filtered.drop(columns=['geometry'])
+    return gdf.drop(columns=['geometry'])
 
 @st.cache_data
 def load_segments():
@@ -148,10 +165,22 @@ def load_xai_data():
     features_dir = data_cfg["features"]["output_dir"]
     df = pd.read_parquet(os.path.join(features_dir, "model_dataset.parquet"))
     
+    # Re-create engineering features to match training pipeline
+    if "exposure" not in df.columns:
+        df["exposure"] = df["probe_count"].fillna(0) * df["length_m"]
+        df["log_exposure"] = np.log1p(df["exposure"])
+    
     with open(MODEL_PATH, "rb") as f:
         model = pickle.load(f)
         
-    features = [f for f in model_cfg["modeling"]["features_v2"] if f in df.columns]
+    # Get features from the model if available, otherwise from config
+    try:
+        # For CalibratedClassifierCV, reach into the base estimator
+        features = model.calibrated_classifiers_[0].estimator.feature_names_in_.tolist()
+    except:
+        # Fallback to features_v2 in config
+        features = [f for f in model_cfg["modeling"]["features_v2"] if f in df.columns]
+        
     return df, model, features, model_cfg
 
 @st.cache_data
@@ -186,18 +215,74 @@ def main():
     if prototype_missing:
         st.sidebar.info("Prototype mode: using sample Bangkok data until pipeline artifacts are available.")
     
+    # Updated Navigation: Removed XAI standalone page
     mode = st.sidebar.radio("Navigation", [
         "1. Predictive Risk Map",
-        "2. Historical Map",
-        "3. Explainable AI (XAI)"
+        "2. Historical Map"
     ])
 
+    # Mode change detection to clear selection
+    if "current_mode" not in st.session_state:
+        st.session_state.current_mode = mode
+    if st.session_state.current_mode != mode:
+        st.session_state.current_mode = mode
+        if "selected_segment_id" in st.session_state:
+            del st.session_state.selected_segment_id
+
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### Map Filters")
-    risk_threshold = st.sidebar.slider(
-        "Min Risk Threshold (%)", 
-        min_value=5, max_value=90, value=20, step=5
-    ) / 100.0
+    st.sidebar.markdown("### Legend")
+    st.sidebar.markdown("🔴 **Has Historical Accidents**")
+    st.sidebar.markdown("🔵 **No Historical Accidents**")
+
+    # Sidebar XAI Panel (appears when a segment is selected)
+    if "selected_segment_id" in st.session_state:
+        st.sidebar.markdown("---")
+        sid = st.session_state.selected_segment_id
+        st.sidebar.subheader(f"🔍 Segment Analysis: {sid}")
+        
+        with st.sidebar:
+            df, model, features, xai_model_cfg = load_xai_data()
+            is_prototype_xai = df is None or model is None
+            
+            with st.spinner("Analyzing segment..."):
+                try:
+                    if is_prototype_xai:
+                        risk_score, top_factors = prototype_xai_result(sid)
+                    else:
+                        risk_score, top_factors = explain_segment(sid, df, model, features, top_k=5)
+                    
+                    st.metric("Predicted Risk Score", f"{risk_score*100:.1f}%")
+                    
+                    # Feature Importance
+                    st.markdown("### Top Factors Driving Risk")
+                    plot_df = pd.DataFrame(list(top_factors.items()), columns=['Feature', 'Impact'])
+                    plot_df['Absolute Impact'] = plot_df['Impact'].abs()
+                    plot_df = plot_df.sort_values('Absolute Impact', ascending=True)
+                    st.sidebar.bar_chart(plot_df.set_index('Feature')['Impact'])
+                    
+                    # AI Narrative
+                    st.markdown("### AI Narrative Explanation")
+                    should_narrate = False if is_prototype_xai else xai_model_cfg.get("explanation", {}).get("enable_narrative", False)
+                    
+                    if is_prototype_xai:
+                        st.sidebar.info(
+                            "Prototype narrative: this segment is flagged mainly because sample congestion, nearby activity density, "
+                            "and morning speed drop increase the synthetic risk score."
+                        )
+                    elif should_narrate:
+                        if os.environ.get("GEMINI_API_KEY"):
+                            llm_model = xai_model_cfg.get("explanation", {}).get("llm_model", "gemini-1.5-flash")
+                            narrative = generate_explanation(sid, risk_score, top_factors, llm_model)
+                            if narrative:
+                                st.sidebar.info(narrative)
+                        else:
+                            st.sidebar.warning("GEMINI_API_KEY not found.")
+                except Exception as e:
+                    st.sidebar.error(f"Analysis error: {e}")
+            
+            if st.button("Close Analysis"):
+                del st.session_state.selected_segment_id
+                st.rerun()
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### System")
@@ -209,16 +294,16 @@ def main():
 
     if mode == "1. Predictive Risk Map":
         st.header("🔮 Predictive Risk Map")
-        st.markdown(f"Showing segments with predicted risk ≥ {risk_threshold*100:.0f}%.")
+        st.markdown("Showing all road segments. Click a segment to analyze.")
 
         if missing_paths(RISK_SCORES_PATH, SEGMENTS_PATH):
             st.info("Prototype map data is being shown because processed risk scores or road segments are missing.")
         
-        with st.spinner("Filtering and loading Map Data..."):
-            gdf = load_risk_data(risk_threshold)
+        with st.spinner("Loading Map Data..."):
+            gdf = load_risk_data()
             
             if gdf.empty:
-                st.warning(f"No segments found with risk ≥ {risk_threshold*100:.0f}%. Try lowering the threshold.")
+                st.warning("No road segments found.")
                 return
             
             st.caption(f"Currently displaying {len(gdf):,} segments.")
@@ -227,10 +312,11 @@ def main():
             layer = pdk.Layer(
                 "PathLayer",
                 gdf,
+                id="risk-paths",
                 pickable=True,
                 get_color="color",
                 width_scale=1,
-                width_min_pixels=1,
+                width_min_pixels=2,
                 get_path="path",
                 get_width=3,
             )
@@ -241,10 +327,18 @@ def main():
             r = pdk.Deck(
                 layers=[layer],
                 initial_view_state=view_state,
-                tooltip={"text": "Segment ID: {segment_id}\nRisk Score: {risk_pct}%"}
+                tooltip={"text": "Segment ID: {segment_id}\nRisk Score: {risk_pct}%\nAccidents: {historical_accidents}"}
             )
             
-            st.pydeck_chart(r)
+            # Handle selection
+            event = st.pydeck_chart(r, on_select="rerun", selection_mode="single-object", use_container_width=True)
+            
+            if event and event.get("selection") and event["selection"].get("objects"):
+                selection_objs = event["selection"]["objects"]
+                if "risk-paths" in selection_objs and selection_objs["risk-paths"]:
+                    selected_obj = selection_objs["risk-paths"][0]
+                    st.session_state.selected_segment_id = selected_obj["segment_id"]
+                    st.rerun()
 
     elif mode == "2. Historical Map":
         st.header("📍 Historical Map Visualization")
@@ -443,66 +537,6 @@ def main():
             tooltip=tooltip
         )
         st.pydeck_chart(r)
-
-    elif mode == "3. Explainable AI (XAI)":
-        st.header("🧠 Explainable AI (XAI)")
-        st.markdown("Enter a Road Segment ID to understand *why* it is considered risky.")
-        
-        df, model, features, xai_model_cfg = load_xai_data()
-        is_prototype_xai = df is None or model is None
-
-        if is_prototype_xai:
-            st.info("Prototype XAI is being shown because the trained model or model dataset is missing.")
-        
-        segment_id = st.number_input("Enter Segment ID", min_value=0, value=103470, step=1)
-        
-        if st.button("Analyze Risk"):
-            with st.spinner("Calculating SHAP values..."):
-                try:
-                    if is_prototype_xai:
-                        risk_score, top_factors = prototype_xai_result(segment_id)
-                    else:
-                        risk_score, top_factors = explain_segment(segment_id, df, model, features, top_k=5)
-                    
-                    col1, col2 = st.columns([1, 2])
-                    
-                    with col1:
-                        st.metric("Predicted Risk Score", f"{risk_score*100:.1f}%")
-                        st.markdown("### Top Factors Driving Risk")
-                        
-                        # Prepare data for chart
-                        plot_df = pd.DataFrame(list(top_factors.items()), columns=['Feature', 'Impact'])
-                        plot_df['Direction'] = plot_df['Impact'].apply(lambda x: 'Increases Risk' if x > 0 else 'Decreases Risk')
-                        plot_df['Absolute Impact'] = plot_df['Impact'].abs()
-                        plot_df = plot_df.sort_values('Absolute Impact', ascending=True)
-                        
-                        st.bar_chart(plot_df.set_index('Feature')['Impact'])
-                        
-                    with col2:
-                        st.markdown("### AI Narrative Explanation")
-                        should_narrate = False if is_prototype_xai else xai_model_cfg.get("explanation", {}).get("enable_narrative", False)
-                        
-                        if is_prototype_xai:
-                            st.info(
-                                "Prototype narrative: this segment is flagged mainly because sample congestion, nearby activity density, "
-                                "and morning speed drop increase the synthetic risk score. A practical countermeasure would be to review "
-                                "signal timing and targeted speed enforcement during peak periods."
-                            )
-                        elif should_narrate:
-                            if os.environ.get("GEMINI_API_KEY"):
-                                with st.spinner("Asking Gemini..."):
-                                    llm_model = xai_model_cfg.get("explanation", {}).get("llm_model", "gemini-1.5-flash")
-                                    narrative = generate_explanation(segment_id, risk_score, top_factors, llm_model)
-                                    if narrative:
-                                        st.info(narrative)
-                                    else:
-                                        st.error("Failed to generate narrative. Check terminal for errors.")
-                            else:
-                                st.warning("GEMINI_API_KEY not found in environment. Narrative generation skipped. Check your .env file.")
-                        else:
-                            st.info("Narrative generation is disabled in configs/model_params.yaml.")
-                except ValueError as e:
-                    st.error(str(e))
 
 if __name__ == "__main__":
     main()

@@ -72,7 +72,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--segment_id", type=int, required=True, help="Road segment ID to explain")
-    parser.add_argument("--version", choices=["v1", "v2"], default="v2", help="Feature version to use")
+    parser.add_argument("--version", choices=["v1", "v2", "bi"], default="bi", help="Feature version to use (v1, v2, or bi for latest)")
     parser.add_argument("--narrative", action=argparse.BooleanOptionalAction, 
                         help="Enable/disable LLM narrative (overrides config)")
     args = parser.parse_args()
@@ -94,6 +94,11 @@ def main():
     print(f"Loading dataset from {data_path}...")
     df = pd.read_parquet(data_path)
     
+    # Re-create engineering features to match training pipeline
+    if "exposure" not in df.columns:
+        df["exposure"] = df["probe_count"].fillna(0) * df["length_m"]
+        df["log_exposure"] = np.log1p(df["exposure"])
+
     if args.segment_id not in df['segment_id'].values:
         print(f"Error: Segment ID {args.segment_id} not found in dataset.")
         return
@@ -101,14 +106,28 @@ def main():
     segment_data = df[df['segment_id'] == args.segment_id]
     
     # 3. Load Model
-    model_path = f"models/xgboost_{args.version}_xgboost.pkl"
+    if args.version == "bi":
+        model_path = "models/xgboost_bi_classification.pkl"
+    else:
+        model_path = f"models/xgboost_{args.version}_xgboost.pkl"
+
     print(f"Loading model from {model_path}...")
     with open(model_path, "rb") as f:
         calibrated_model = pickle.load(f)
         
     # Get features used by model
-    feat_key = "features" if args.version == "v1" else "features_v2"
-    features = [f for f in model_cfg["modeling"][feat_key] if f in df.columns]
+    try:
+        # Try to get features from the model first
+        features = calibrated_model.calibrated_classifiers_[0].estimator.feature_names_in_.tolist()
+    except:
+        # Fallback to config
+        feat_key = "features" if args.version == "v1" else "features_v2"
+        features = [f for f in model_cfg["modeling"].get(feat_key, []) if f in df.columns]
+    
+    if not features:
+        print("Error: Could not determine features for the model.")
+        return
+        
     X_segment = segment_data[features]
     
     # Get risk prediction
