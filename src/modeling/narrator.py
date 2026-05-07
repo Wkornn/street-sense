@@ -9,7 +9,7 @@ impacts into human-readable narratives.
 import os
 import google.generativeai as genai
 
-def generate_explanation(segment_id, risk_score, top_factors, model_name="gemini-1.5-flash"):
+def generate_explanation(segment_id, risk_score, top_factors, model_name="gemini-2.5-flash", stream=False):
     """
     Sends SHAP feature impacts to Gemini to generate a human-readable explanation.
     """
@@ -44,9 +44,31 @@ def generate_explanation(segment_id, risk_score, top_factors, model_name="gemini
         Style: Concise, data-driven, and local to Bangkok context. Do not use markdown.
         """
 
-        response = model.generate_content(prompt)
-        return response.text.strip()
+        if stream:
+            try:
+                response = model.generate_content(prompt, stream=True)
+                def chunk_generator():
+                    try:
+                        for chunk in response:
+                            if chunk.text:
+                                yield chunk.text
+                    except Exception as gen_e:
+                        yield f"\n\n⚠️ [Streaming Error] {gen_e}"
+                return chunk_generator()
+            except Exception as e:
+                err = f"Error starting stream: {e}"
+                print(err)
+                def error_gen(): yield f"⚠️ {err}"
+                return error_gen()
+        else:
+            response = model.generate_content(prompt)
+            return response.text.strip()
         
     except Exception as e:
-        print(f"Error in LLM Narrative generation: {e}")
+        error_msg = f"Error in LLM Narrative generation: {e}"
+        print(error_msg)
+        # Return a generator that yields the error if streaming was requested
+        if stream:
+            def error_gen(): yield f"⚠️ {error_msg}"
+            return error_gen()
         return None

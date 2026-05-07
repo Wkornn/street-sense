@@ -96,7 +96,7 @@ explanation:
   enable_narrative: true
   
   # LLM Model to use
-  llm_model: "gemini-2.5-flash"
+  llm_model: "gemini-2.5-flash-lite"
   
   # Number of top SHAP features to feed to the LLM
   top_k_features: 5
