@@ -51,3 +51,6 @@ data/processed/results/*
 !data/processed/results/risk_scores_v4.parquet
 !data/processed/results/risk_scores.parquet
 !data/processed/results/risk_scores_v4.csv
+
+docs
+scratch
