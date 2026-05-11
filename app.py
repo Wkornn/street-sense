@@ -40,6 +40,11 @@ MODEL_DATASET_PATH = Path("data/processed/features/model_dataset.parquet")
 MODEL_PATH = Path("models/xgboost_bi_classification.pkl")
 SNAPPED_ACCIDENTS_PATH = Path("data/processed/accidents_snapped.parquet")
 
+DATA_ACKNOWLEDGEMENT = (
+    "Data: OpenStreetMap contributors (ODbL), Ministry of Transport Data Catalog, "
+    "and iTIC Foundation / Longdo Open Data Archives."
+)
+
 
 def missing_paths(*paths):
     return [str(path) for path in paths if not path.exists()]
@@ -321,6 +326,7 @@ def main():
         st.cache_data.clear()
         st.cache_resource.clear()
         st.rerun()
+    st.sidebar.caption(DATA_ACKNOWLEDGEMENT)
     
     data_cfg, model_cfg = load_config()
 
