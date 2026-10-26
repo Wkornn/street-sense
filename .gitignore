@@ -53,4 +53,5 @@ data/processed/results/*
 !data/processed/results/risk_scores_v4.csv
 
 docs
-scratch
+scratchdata/
+models/
