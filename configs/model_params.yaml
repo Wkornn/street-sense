@@ -16,8 +16,6 @@ preprocessing:
     night: 0.10
 
 modeling:
-  # Experiment Tracking
-  experiment_name: "Bangkok_Accident_Risk"
   
   # Model Selection
   model_type: "xgboost" # Options: xgboost, random_forest
