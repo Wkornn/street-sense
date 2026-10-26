@@ -44,14 +44,12 @@ data/processed/*
 !data/processed/features/model_dataset.parquet
 
 # Allow results folder
+data/processed/*
 !data/processed/results/
 data/processed/results/*
-!data/processed/results/risk_scores_v2_xgboost.parquet
-!data/processed/results/risk_scores_v3.parquet
-!data/processed/results/risk_scores_v4.parquet
 !data/processed/results/risk_scores.parquet
-!data/processed/results/risk_scores_v4.csv
 
 docs
-scratchdata/
+scratch/
+data/
 models/
