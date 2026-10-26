@@ -6,7 +6,6 @@ pyyaml
 scikit-learn
 xgboost
 shap
-mlflow
 pyarrow
 fastparquet
 google-generativeai

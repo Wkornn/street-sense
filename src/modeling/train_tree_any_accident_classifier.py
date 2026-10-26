@@ -30,15 +30,6 @@ from sklearn.metrics import (
     brier_score_loss,
 )
 
-# Try to import MLFlow (Optional)
-try:
-    import mlflow
-    import mlflow.sklearn
-    import mlflow.xgboost
-    HAS_MLFLOW = True
-except ImportError:
-    HAS_MLFLOW = False
-
 # Config Paths
 DATA_CFG_PATH  = "configs/data_sources.yaml"
 MODEL_CFG_PATH = "configs/model_params.yaml"
@@ -179,7 +170,6 @@ def main():
     h_params   = m_params["hyperparameters"]
     model_type = m_params.get("model_type", "xgboost")
     target     = m_params["target"]
-    exp_name   = m_params.get("experiment_name", "Bangkok_Accident_Risk")
 
     # Select feature version
     feat_key = "features" if args.version == "v1" else "features_v2"
@@ -241,21 +231,7 @@ def main():
     # 7. Evaluate (probability metrics only)
     metrics = evaluate(y_test, y_prob_uncal, y_prob_cal)
 
-    # 8. Log to MLFlow & Save
-    if HAS_MLFLOW:
-        mlflow.set_experiment(exp_name)
-        with mlflow.start_run(run_name=f"{version_tag}_{args.calibration}"):
-            mlflow.log_params(h_params)
-            mlflow.log_param("model_type",       model_type)
-            mlflow.log_param("feature_version",  args.version)
-            mlflow.log_param("num_features",     len(features))
-            mlflow.log_param("class_ratio",      round(ratio, 1))
-            mlflow.log_param("calibration",      args.calibration)
-            mlflow.log_metrics(metrics)
-            mlflow.sklearn.log_model(calibrated_model, "calibrated_model")
-    else:
-        print("\n  (MLFlow not detected — skipping experiment logging)")
-
+    # 8. Save
     save_model(calibrated_model, model_type, version_tag)
     save_risk_scores(calibrated_model, X, segment_ids, version_tag)
 

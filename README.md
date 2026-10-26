@@ -199,7 +199,7 @@ street-sense/
 
 ## 🛠️ Tech Stack
 *   **Geospatial:** GeoPandas, OSMnx, Shapely, PyDeck
-*   **Machine Learning:** XGBoost, Scikit-Learn (Calibration), MLflow
+*   **Machine Learning:** XGBoost, Scikit-Learn (Calibration)
 *   **Visualization:** Streamlit
 *   **LLM Integration:** Google Gemini (for risk narratives)
 

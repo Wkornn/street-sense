@@ -35,11 +35,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-try:
-    import mlflow
-    HAS_MLFLOW = True
-except ImportError:
-    HAS_MLFLOW = False
 
 DATA_CFG_PATH  = "configs/data_sources.yaml"
 MODEL_CFG_PATH = "configs/model_params.yaml"
@@ -123,7 +118,6 @@ def main():
     data_cfg  = load_yaml(DATA_CFG_PATH)
     model_cfg = load_yaml(MODEL_CFG_PATH)
     m_params  = model_cfg["modeling"]
-    exp_name  = m_params.get("experiment_name", "Bangkok_Accident_Risk")
 
     # Count model always uses the "no-history" feature set
     # (the target IS accident count — can't use acc_* as features)
@@ -267,18 +261,6 @@ def main():
     with open(model_path, "wb") as f:
         pickle.dump(result, f)
     print(f"\n  Model saved → {model_path}")
-
-    # 10. Log to MLFlow
-    if HAS_MLFLOW:
-        mlflow.set_experiment(exp_name)
-        with mlflow.start_run(run_name="negative_binomial_count"):
-            mlflow.log_param("model_type",    "negative_binomial")
-            mlflow.log_param("target",        TARGET)
-            mlflow.log_param("num_features",  len(features))
-            mlflow.log_param("exposure",      "log(length_m/100)")
-            mlflow.log_metrics(metrics)
-    else:
-        print("\n  (MLFlow not detected — skipping experiment logging)")
 
 
 if __name__ == "__main__":
