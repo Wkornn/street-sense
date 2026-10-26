@@ -99,7 +99,7 @@ The pipeline produces the main artifacts used by modeling and the dashboard:
 Train the default calibrated binary classifier used by the Streamlit app:
 
 ```bash
-python src/modeling/train.py
+python src/modeling/train_xgb_severe_classifier.py
 ```
 
 This writes the dashboard defaults:
@@ -110,7 +110,7 @@ This writes the dashboard defaults:
 For experiment variants, use:
 
 ```bash
-python src/modeling/train_classification.py --version v2 --calibration isotonic
+python src/modeling/train_tree_any_accident_classifier.py --version v2 --calibration isotonic
 ```
 
 Use `--version v1` for the full historical-accident feature set, or `--version v2` for the no-history feature set intended for new or under-observed roads.
@@ -170,7 +170,7 @@ Run scripts from the repository root so relative paths resolve correctly:
 
 ```bash
 python scripts/run_pipeline.py
-python src/modeling/train_classification.py --version v2
+python src/modeling/train_tree_any_accident_classifier.py --version v2
 streamlit run app.py
 ```
 

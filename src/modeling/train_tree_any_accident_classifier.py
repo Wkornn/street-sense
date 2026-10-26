@@ -1,6 +1,6 @@
 """
 Production-Level Risk Scoring Training Script
-src/modeling/train_classification.py
+src/modeling/train_tree_any_accident_classifier.py
 
 Strategy: Probability-based Risk Scoring (not hard classification)
 1. Train XGBoost/RF with scale_pos_weight to handle imbalance (no SMOTE)
@@ -9,8 +9,8 @@ Strategy: Probability-based Risk Scoring (not hard classification)
 4. Output: risk_score per segment (0.0–1.0) saved to parquet
 
 Usage:
-  python src/models/train.py              # v1: full features (with history)
-  python src/models/train.py --version v2 # v2: no accident history
+  python src/modeling/train.py              # v1: full features (with history)
+  python src/modeling/train.py --version v2 # v2: no accident history
 """
 
 import os

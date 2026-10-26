@@ -1,6 +1,6 @@
 """
 V3 Pipeline Implementation based on Phases I-V
-src/modeling/train_v3.py
+src/modeling/train_fcm_xgb_grades.py
 """
 
 import os
