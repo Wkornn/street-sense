@@ -17,39 +17,13 @@ mlruns/
 mlflow.db
 
 # ----------------------------------------
-# Models (Ignore all except specific models)
+# Generated data and models (rebuilt by the pipeline)
+# Leading "/" = only the folder at the repo root,
+# so src/modeling/models/ (code) is NOT ignored.
 # ----------------------------------------
-models/*
-!models/xgboost_v2_xgboost.pkl
-!models/xgboost_v3_pipeline.pkl
-!models/xgboost_bi_classification.pkl
+/data/
+/models/
 
-# ----------------------------------------
-# Data Directory (Ignore all, explicitly whitelist needed files)
-# ----------------------------------------
-# Ignore everything in data/
-data/*
-
-# Allow processed folder to exist
-!data/processed/
-data/processed/*
-
-# Whitelist root processed files
-!data/processed/road_segments.gpkg
-!data/processed/accidents_snapped.parquet
-
-# Allow features folder
-!data/processed/features/
-# data/processed/features/*
-!data/processed/features/model_dataset.parquet
-
-# Allow results folder
-data/processed/*
-!data/processed/results/
-data/processed/results/*
-!data/processed/results/risk_scores.parquet
-
-docs
-scratch/
-data/
-models/
+# Local notes and scratch
+/docs/
+/scratch/
