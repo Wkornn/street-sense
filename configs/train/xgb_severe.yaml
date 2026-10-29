@@ -6,8 +6,8 @@ name: xgb_severe
 data_path: data/processed/features/model_dataset.parquet
 
 target:
-  # 1 if ANY of these columns is > 0 (fatal or serious accident on the segment)
-  columns: [acc_fatal, acc_serious]
+  type: binary                       # binary: 1 if ANY column > 0  |  count: sum of the columns
+  columns: [acc_fatal, acc_serious]  # fatal or serious accidents on the segment
 
 features: traffic_spatial_exposure   # name of a set in configs/features.yaml
 
@@ -29,5 +29,5 @@ split:
   seed: 42
 
 output:
-  model_dir: models/xgb_severe
-  risk_scores: data/processed/results/risk_scores.parquet
+  model_dir: models/xgb_severe                              # model + meta + risk_scores.parquet
+  risk_scores: data/processed/results/risk_scores.parquet  # optional extra copy (used by notebooks)
