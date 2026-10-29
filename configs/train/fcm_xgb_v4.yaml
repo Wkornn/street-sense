@@ -1,0 +1,34 @@
+# EXPERIMENTAL - V4 spatial pattern inference (see src/modeling/models/fcm_xgb.py).
+# Not in pipeline.yaml. Run: python -m src.modeling.train --config configs/train/fcm_xgb_v4.yaml
+
+name: fcm_xgb_v4
+
+data_path: data/processed/features/model_dataset.parquet
+
+target:
+  type: binary                       # defines the training pool (y > 0) and the shared metrics
+  columns: [acc_fatal, acc_serious]  # same as xgb_severe / nb_severe, so results are comparable
+
+features: traffic_spatial_exposure   # no accident-history columns
+
+model:
+  type: fcm_xgb
+  params:
+    n_grades: 4                      # Safe / Low / Moderate / High
+    surrogate_cols: [speed_mean, congestion_score, speed_drop_morning]  # must be in the feature set
+    invert_cols: [speed_mean]        # lower speed = riskier
+    renn: false                      # optional: needs imbalanced-learn
+    optuna_trials: 0                 # optional: e.g. 15, needs optuna
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.05
+    random_state: 42
+
+split:                               # same split as the other runs
+  method: random
+  cal_size: 0.2
+  test_size: 0.2
+  seed: 42
+
+output:
+  model_dir: models/fcm_xgb_v4
