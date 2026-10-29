@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import joblib
+import xgboost as xgb
 from sklearn.isotonic import IsotonicRegression
 from xgboost import XGBClassifier
 
@@ -28,6 +29,15 @@ class XGBRiskModel:
         """Calibrated probability of a fatal/serious accident (0-1)."""
         raw = self.predict_raw(X)
         return self.calibrator.predict(raw) if self.calibrator is not None else raw
+
+    def explain(self, X):
+        """Per-feature contributions (SHAP values, log-odds), one row per sample.
+
+        Computed by XGBoost itself (exact TreeSHAP). They explain the booster;
+        calibration only re-scales its output, so the ranking of factors is the same.
+        """
+        contrib = self.booster.get_booster().predict(xgb.DMatrix(X), pred_contribs=True)
+        return contrib[:, :-1]  # last column is the bias (base value)
 
 
 @register("xgb_classifier")
