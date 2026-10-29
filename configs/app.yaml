@@ -1,0 +1,15 @@
+# Settings for the Streamlit app and the CLI explainer (src/modeling/xai_explainer.py)
+
+# Which trained model to serve: a folder written by src/modeling/train.py
+# (contains meta.json naming the plugin that can load it)
+model_dir: models/xgb_severe
+
+explanation:
+  # Enable/Disable natural language narrative generation (CLI default)
+  enable_narrative: true
+
+  # LLM model used for narratives
+  llm_model: "gemini-2.5-flash-lite"
+
+  # Number of top SHAP features shown and fed to the LLM
+  top_k_features: 5
