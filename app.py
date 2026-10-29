@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import geopandas as gpd
 import pydeck as pdk
-import pickle
-import numpy as np
+import json
 import yaml
 import os
 import sys
@@ -25,6 +24,8 @@ if project_root not in sys.path:
 
 from src.modeling.xai_explainer import explain_segment
 from src.modeling.narrator import generate_explanation
+from src.modeling.models import load_model
+from src.modeling import data
 
 st.set_page_config(page_title="H-Spot Bangkok", layout="wide", initial_sidebar_state="expanded")
 
@@ -32,12 +33,15 @@ st.set_page_config(page_title="H-Spot Bangkok", layout="wide", initial_sidebar_s
 # Configuration & Caching
 # -----------------------------------------------------------------------------
 DATA_CFG_PATH  = "configs/data_sources.yaml"
-MODEL_CFG_PATH = "configs/model_params.yaml"
+APP_CFG_PATH   = "configs/app.yaml"
 
 RISK_SCORES_PATH = Path("data/processed/results/risk_scores.parquet")
 SEGMENTS_PATH = Path("data/processed/road_segments.gpkg")
 MODEL_DATASET_PATH = Path("data/processed/features/model_dataset.parquet")
-MODEL_PATH = Path("models/xgboost_bi_classification.pkl")
+
+with open(APP_CFG_PATH, encoding="utf-8") as _f:
+    MODEL_DIR = Path(yaml.safe_load(_f)["model_dir"])
+MODEL_META_PATH = MODEL_DIR / "meta.json"
 SNAPPED_ACCIDENTS_PATH = Path("data/processed/accidents_snapped.parquet")
 
 DATA_ACKNOWLEDGEMENT = (
@@ -114,9 +118,9 @@ def prototype_xai_result(segment_id):
 def load_config():
     with open(DATA_CFG_PATH, encoding="utf-8") as f:
         data_cfg = yaml.safe_load(f)
-    with open(MODEL_CFG_PATH, encoding="utf-8") as f:
-        model_cfg = yaml.safe_load(f)
-    return data_cfg, model_cfg
+    with open(APP_CFG_PATH, encoding="utf-8") as f:
+        app_cfg = yaml.safe_load(f)
+    return data_cfg, app_cfg
 
 @st.cache_data
 def load_risk_data():
@@ -168,30 +172,25 @@ def load_segments():
 
 @st.cache_data
 def load_xai_data():
-    if missing_paths(MODEL_DATASET_PATH, MODEL_PATH):
+    if missing_paths(MODEL_DATASET_PATH, MODEL_META_PATH):
         return None, None, [], None
 
-    data_cfg, model_cfg = load_config()
+    data_cfg, app_cfg = load_config()
     features_dir = data_cfg["features"]["output_dir"]
     df = pd.read_parquet(os.path.join(features_dir, "model_dataset.parquet"))
-    
-    # Re-create engineering features to match training pipeline
-    if "exposure" not in df.columns:
-        df["exposure"] = df["probe_count"].fillna(0) * df["length_m"]
-        df["log_exposure"] = np.log1p(df["exposure"])
-    
-    with open(MODEL_PATH, "rb") as f:
-        model = pickle.load(f)
-        
-    # Get features from the model if available, otherwise from config
-    try:
-        # For CalibratedClassifierCV, reach into the base estimator
-        features = model.calibrated_classifiers_[0].estimator.feature_names_in_.tolist()
-    except:
-        # Fallback to features_v2 in config
-        features = [f for f in model_cfg["modeling"]["features_v2"] if f in df.columns]
-        
-    return df, model, features, model_cfg
+
+    # Same feature preparation as training (src/modeling/data.py) to avoid train/serve skew
+    df = data.add_exposure(df)
+
+    model = load_model(MODEL_DIR)
+
+    # Features come from the model's own meta.json, written at training time.
+    # select_features raises if any column is missing instead of silently dropping it.
+    meta = json.loads(MODEL_META_PATH.read_text(encoding="utf-8"))
+    features = meta["features"]
+    data.select_features(df, features)
+
+    return df, model, features, app_cfg
 
 @st.cache_data
 def load_historical_accidents():
@@ -222,7 +221,8 @@ def main():
     st.sidebar.markdown("Bangkok Road Risk Assessment")
 
     # Load configuration at the start
-    data_cfg, model_cfg = load_config()
+    data_cfg, app_cfg = load_config()
+    top_k = app_cfg.get("explanation", {}).get("top_k_features", 5)
 
     # Handle map selection from session state (prevents multiple refreshes)
     if "risk_map" in st.session_state:
@@ -232,7 +232,7 @@ def main():
             if "risk-paths" in selection_objs and selection_objs["risk-paths"]:
                 st.session_state.selected_segment_id = selection_objs["risk-paths"][0]["segment_id"]
 
-    prototype_missing = missing_paths(RISK_SCORES_PATH, SEGMENTS_PATH, MODEL_DATASET_PATH, MODEL_PATH)
+    prototype_missing = missing_paths(RISK_SCORES_PATH, SEGMENTS_PATH, MODEL_DATASET_PATH, MODEL_META_PATH)
     if prototype_missing:
         st.sidebar.info("Prototype mode: using sample Bangkok data until pipeline artifacts are available.")
     
@@ -274,7 +274,7 @@ def main():
         st.sidebar.subheader(f"🔍 Segment Analysis: {sid}")
         
         with st.sidebar:
-            df, model, features, xai_model_cfg = load_xai_data()
+            df, model, features, _ = load_xai_data()
             is_prototype_xai = df is None or model is None
             
             with st.spinner("Analyzing segment..."):
@@ -282,7 +282,7 @@ def main():
                     if is_prototype_xai:
                         risk_score, top_factors = prototype_xai_result(sid)
                     else:
-                        risk_score, top_factors = explain_segment(sid, df, model, features, top_k=5)
+                        risk_score, top_factors = explain_segment(sid, df, model, features, top_k=top_k)
                     
                     st.metric("Predicted Risk Score", f"{risk_score*100:.1f}%")
                     
@@ -297,7 +297,7 @@ def main():
                     st.markdown("### 🤖 AI Narrative Explanation")
                     
                     if os.environ.get("GEMINI_API_KEY"):
-                        llm_model = model_cfg.get("explanation", {}).get("llm_model", "gemini-1.5-flash")
+                        llm_model = app_cfg.get("explanation", {}).get("llm_model", "gemini-2.5-flash-lite")
                         
                         if st.button("✨ Generate AI Narrative"):
                             with st.spinner("Consulting AI..."):
@@ -328,7 +328,7 @@ def main():
         st.rerun()
     st.sidebar.caption(DATA_ACKNOWLEDGEMENT)
     
-    data_cfg, model_cfg = load_config()
+    data_cfg, app_cfg = load_config()
 
     if mode == "1. Predictive Risk Map":
         st.header("🔮 Predictive Risk Map")

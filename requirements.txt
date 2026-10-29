@@ -6,7 +6,6 @@ pyyaml
 scikit-learn
 xgboost
 shap
-mlflow
 pyarrow
 fastparquet
 google-generativeai
@@ -18,3 +17,4 @@ optuna
 requests
 rtree
 pyogrio
+statsmodels

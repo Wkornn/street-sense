@@ -1,0 +1,33 @@
+# One file = one training run.
+# Run: python -m src.modeling.train --config configs/train/xgb_severe.yaml
+
+name: xgb_severe
+
+data_path: data/processed/features/model_dataset.parquet
+
+target:
+  # 1 if ANY of these columns is > 0 (fatal or serious accident on the segment)
+  columns: [acc_fatal, acc_serious]
+
+features: traffic_spatial_exposure   # name of a set in configs/features.yaml
+
+model:
+  type: xgb_classifier               # key in the model registry (src/modeling/models)
+  params:
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 42
+  calibration: isotonic              # isotonic or null (classifier plugins only)
+
+split:
+  method: random                     # TODO: spatial split (see to-do list)
+  cal_size: 0.2
+  test_size: 0.2
+  seed: 42
+
+output:
+  model_dir: models/xgb_severe
+  risk_scores: data/processed/results/risk_scores.parquet
