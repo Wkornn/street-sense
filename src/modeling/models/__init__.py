@@ -14,8 +14,13 @@ calibration, file format). train.py only calls these three methods:
         def load(model_dir): ...                                 # return a model with predict_risk(X)
 
 A training config then picks it with `model.type: xgb_classifier`.
+Anything that uses a trained model (app, explainer) calls `load_model(model_dir)`
+and never needs to know which plugin made it.
 To add an approach: create a module here and import it at the bottom of this file.
 """
+
+import json
+from pathlib import Path
 
 MODELS = {}
 
@@ -34,6 +39,12 @@ def get_plugin(name):
     if name not in MODELS:
         raise KeyError(f"Unknown model type '{name}'. Registered: {sorted(MODELS)}")
     return MODELS[name]
+
+
+def load_model(model_dir):
+    """Load a trained model folder, using the plugin named in its meta.json."""
+    meta = json.loads((Path(model_dir) / "meta.json").read_text(encoding="utf-8"))
+    return get_plugin(meta["model_type"]).load(model_dir)
 
 
 # Importing the modules runs their @register decorators.
