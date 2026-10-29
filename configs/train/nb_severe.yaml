@@ -1,0 +1,28 @@
+# Negative Binomial count model: expected number of fatal/serious accidents per segment.
+# Run: python -m src.modeling.train --config configs/train/nb_severe.yaml
+
+name: nb_severe
+
+data_path: data/processed/features/model_dataset.parquet
+
+target:
+  type: count                        # number of fatal + serious accidents (0, 1, 2, ...)
+  columns: [acc_fatal, acc_serious]
+
+features: linear_count               # log features only, see configs/features.yaml
+
+model:
+  type: neg_binomial
+  params:
+    alpha: auto                      # dispersion; auto = estimate from a Poisson fit
+    offset_col: length_m             # exposure: longer roads have more chances for accidents
+    offset_unit: 100                 # -> model predicts accidents per 100 m of road
+
+split:                               # same split as xgb_severe, so metrics are comparable
+  method: random
+  cal_size: 0.2                      # not used by count models (no calibration needed)
+  test_size: 0.2
+  seed: 42
+
+output:
+  model_dir: models/nb_severe

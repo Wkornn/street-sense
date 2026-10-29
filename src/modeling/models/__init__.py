@@ -7,11 +7,17 @@ calibration, file format). train.py only calls these three methods:
     @register("xgb_classifier")
     class XGBClassifierPlugin:
         @staticmethod
-        def fit(model_cfg, X_train, y_train, X_cal, y_cal): ...  # return a fitted model with predict_risk(X)
+        def fit(model_cfg, X_train, y_train, X_cal, y_cal): ...  # return a fitted model
         @staticmethod
         def save(model, out_dir): ...                            # write model files into out_dir
         @staticmethod
-        def load(model_dir): ...                                 # return a model with predict_risk(X)
+        def load(model_dir): ...                                 # return a fitted model
+
+Every fitted model must provide:
+    predict_risk(X)  -> probability of >= 1 event per row (0-1); used for the map and metrics
+    explain(X)       -> per-feature contributions, shape (rows, features); used for "Top Factors"
+Count models also provide:
+    predict_count(X) -> expected number of events per row
 
 A training config then picks it with `model.type: xgb_classifier`.
 Anything that uses a trained model (app, explainer) calls `load_model(model_dir)`
@@ -48,4 +54,5 @@ def load_model(model_dir):
 
 
 # Importing the modules runs their @register decorators.
+from . import neg_binomial  # noqa: E402,F401
 from . import xgb_classifier  # noqa: E402,F401

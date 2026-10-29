@@ -35,13 +35,13 @@ st.set_page_config(page_title="H-Spot Bangkok", layout="wide", initial_sidebar_s
 DATA_CFG_PATH  = "configs/data_sources.yaml"
 APP_CFG_PATH   = "configs/app.yaml"
 
-RISK_SCORES_PATH = Path("data/processed/results/risk_scores.parquet")
 SEGMENTS_PATH = Path("data/processed/road_segments.gpkg")
 MODEL_DATASET_PATH = Path("data/processed/features/model_dataset.parquet")
 
 with open(APP_CFG_PATH, encoding="utf-8") as _f:
     MODEL_DIR = Path(yaml.safe_load(_f)["model_dir"])
 MODEL_META_PATH = MODEL_DIR / "meta.json"
+RISK_SCORES_PATH = MODEL_DIR / "risk_scores.parquet"   # written by train.py next to the model
 SNAPPED_ACCIDENTS_PATH = Path("data/processed/accidents_snapped.parquet")
 
 DATA_ACKNOWLEDGEMENT = (

@@ -44,3 +44,29 @@ traffic_spatial_exposure:
   - log_probe_count
   - exposure
   - log_exposure
+
+linear_count:
+  # For linear count models (neg_binomial): log versions only (no raw duplicates),
+  # no raw probe-count bins, and no exact linear combinations of other columns
+  # (congestion_score = weighted pct_below_*, speed_drop_morning = daytime - morning speed).
+  # length_m is used as the exposure offset, not a regressor.
+  - highway_rank
+  - lanes
+  - lanes_known
+  - length_m
+  - log_dist_intersection_m
+  - log_poi_count_200m
+  - log_building_density_200m
+  - log_dist_school_m
+  - log_dist_hospital_m
+  - log_dist_fuel_m
+  - log_dist_mall_m
+  - speed_mean
+  - speed_mean_daytime
+  - speed_mean_morning_peak
+  - speed_mean_evening_peak
+  - pct_below_20kmh_daytime
+  - pct_below_20kmh_morning_peak
+  - pct_below_20kmh_evening_peak
+  - has_probe_data
+  - log_probe_count
