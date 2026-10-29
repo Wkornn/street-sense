@@ -4,6 +4,9 @@
 
 Flow: config -> data -> target -> features -> split
       -> plugin.fit (model-specific) -> evaluate -> plugin.save + meta + risk scores
+
+Everything a run produces goes into output.model_dir, so the app can switch
+models by changing one line (model_dir) in configs/app.yaml.
 """
 
 import argparse
@@ -15,7 +18,7 @@ import yaml
 
 from src.modeling import data
 from src.modeling.config import load_config
-from src.modeling.evaluate import classification_metrics
+from src.modeling.evaluate import evaluate
 from src.modeling.models import get_plugin
 
 
@@ -34,7 +37,8 @@ def run(cfg):
     model = plugin.fit(cfg["model"], X_train, y_train, X_cal, y_cal)
 
     # 3. Evaluate on the test split only
-    metrics = classification_metrics(y_test, model.predict_risk(X_test))
+    target_type = cfg["target"].get("type", "binary")
+    metrics = evaluate(target_type, y_test, model, X_test)
     print(json.dumps(metrics, indent=2))
 
     # 4. Save: model files (plugin) + run info (same for every approach)
@@ -44,6 +48,7 @@ def run(cfg):
     meta = {
         "name": cfg["name"],
         "model_type": cfg["model"]["type"],
+        "target": cfg["target"],
         "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "features": cfg["features"],
         "metrics": metrics,
@@ -51,12 +56,18 @@ def run(cfg):
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     (out_dir / "config.yaml").write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
 
-    # 5. Score every segment
-    scores_path = Path(cfg["output"]["risk_scores"])
-    scores_path.parent.mkdir(parents=True, exist_ok=True)
+    # 5. Score every segment (risk = probability of >= 1 event; counts too if the model has them)
     scores = df[["segment_id"]].assign(risk_score=model.predict_risk(X))
-    scores.to_parquet(scores_path, index=False)
-    print(f"Saved model -> {out_dir}/  |  risk scores -> {scores_path}")
+    if hasattr(model, "predict_count"):
+        scores["expected_count"] = model.predict_count(X)
+    scores.to_parquet(out_dir / "risk_scores.parquet", index=False)
+
+    # Optional extra copy, e.g. for notebooks that read a fixed path
+    extra = cfg["output"].get("risk_scores")
+    if extra:
+        Path(extra).parent.mkdir(parents=True, exist_ok=True)
+        scores.to_parquet(extra, index=False)
+    print(f"Saved model + risk scores -> {out_dir}/" + (f"  (copy: {extra})" if extra else ""))
     return metrics
 
 

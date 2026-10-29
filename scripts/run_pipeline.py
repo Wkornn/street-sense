@@ -20,27 +20,33 @@ if not os.path.exists("src") or not os.path.exists("configs"):
     print("Usage: python scripts/run_pipeline.py")
     sys.exit(1)
 
-def run_script(script_path, output_files=None, force=False):
+def run_script(script_path, output_files=None, force=False, args=None, module=False):
     """
     Runs a script only if its output_files don't exist, or if force is True.
+
+    args:   extra command-line arguments, e.g. ["--config", "configs/train/xgb_severe.yaml"]
+    module: run as `python -m <script_path>` (needed for code that imports `src.*`)
     """
+    label = " ".join([script_path] + (args or []))
+
     if output_files and not force:
         if isinstance(output_files, str):
             output_files = [output_files]
         
         if all(os.path.exists(f) for f in output_files):
-            print(f">>> Skipping: {script_path} (Output already exists)")
+            print(f">>> Skipping: {label} (Output already exists)")
             return True
 
-    print(f"\n>>> Running: {script_path}")
+    print(f"\n>>> Running: {label}")
     start_time = time.time()
     try:
-        result = subprocess.run([sys.executable, script_path], check=True)
+        cmd = [sys.executable] + (["-m", script_path] if module else [script_path]) + (args or [])
+        result = subprocess.run(cmd, check=True)
         elapsed = time.time() - start_time
-        print(f">>> Success: {script_path} (Took {elapsed:.1f}s)")
+        print(f">>> Success: {label} (Took {elapsed:.1f}s)")
         return True
     except subprocess.CalledProcessError as e:
-        print(f">>> ERROR: {script_path} failed with exit code {e.returncode}")
+        print(f">>> ERROR: {label} failed with exit code {e.returncode}")
         return False
 
 def main():
@@ -55,6 +61,7 @@ def main():
     parser.add_argument("--preprocess", action="store_true", default=p_cfg.get("preprocess", False), help="Run Phase 2: Preprocessing")
     parser.add_argument("--features",   action="store_true", default=p_cfg.get("features", False),   help="Run Phase 3: Feature Engineering")
     parser.add_argument("--matrix",     action="store_true", default=p_cfg.get("matrix", False),     help="Run Phase 4: Final Matrix")
+    parser.add_argument("--train",      action="store_true", default=p_cfg.get("train", False),      help="Run Phase 6: Train models")
     
     # Overrides & Flags
     parser.add_argument("--force",      action="store_true", default=p_cfg.get("force", False),      help="Force re-run (overwrite existing)")
@@ -106,6 +113,16 @@ def main():
         print("\n--- Phase 5: Model Dataset ---")
         dataset_out = os.path.join(f_dir, "model_dataset.parquet")
         run_script("src/features/preprocess.py", output_files=dataset_out, force=args.force)
+
+    # 6. Phase: Training (one run per config listed in pipeline.yaml)
+    if args.train or args.all:
+        print("\n--- Phase 6: Training ---")
+        for train_cfg in p_cfg.get("train_configs", ["configs/train/xgb_severe.yaml"]):
+            model_dir = load_yaml(train_cfg)["output"]["model_dir"]
+            run_script("src.modeling.train", module=True,
+                       args=["--config", train_cfg],
+                       output_files=os.path.join(model_dir, "meta.json"),
+                       force=args.force)
 
     print("\nPipeline execution complete.")
 

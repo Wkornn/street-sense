@@ -16,7 +16,6 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-import xgboost as xgb
 import yaml
 from dotenv import load_dotenv
 
@@ -58,12 +57,10 @@ def explain_segment(segment_id, df, model, features, top_k=5):
     X_segment = data.select_features(segment_data, features)
     risk_score = float(model.predict_risk(X_segment)[0])
 
-    # SHAP values computed by XGBoost itself (exact TreeSHAP, no `shap` library needed).
-    # They explain the uncalibrated booster in log-odds; calibration only re-scales it.
-    contrib = model.booster.get_booster().predict(xgb.DMatrix(X_segment), pred_contribs=True)[0]
-    shap_values = contrib[:-1]  # last column is the bias (base value)
+    # Each model explains itself (XGBoost: TreeSHAP, NB: coefficient contributions)
+    contributions = model.explain(X_segment)[0]
 
-    impacts = sorted(zip(features, shap_values), key=lambda kv: abs(kv[1]), reverse=True)
+    impacts = sorted(zip(features, contributions), key=lambda kv: abs(kv[1]), reverse=True)
     top_factors = {name: float(value) for name, value in impacts[:top_k]}
     return risk_score, top_factors
 
