@@ -1,0 +1,46 @@
+# Named feature sets. Training configs refer to these by name.
+# Every column listed here must exist after src/modeling/data.py has run
+# (model_dataset.parquet columns + derived columns such as exposure).
+
+traffic_spatial_exposure:
+  # geometry
+  - highway_rank
+  - lanes
+  - lanes_known
+  - length_m
+  # spatial
+  - dist_intersection_m
+  - poi_count_200m
+  - building_density_200m
+  - dist_school_m
+  - dist_hospital_m
+  - dist_fuel_m
+  - dist_mall_m
+  - log_dist_intersection_m
+  - log_poi_count_200m
+  - log_building_density_200m
+  - log_dist_school_m
+  - log_dist_hospital_m
+  - log_dist_fuel_m
+  - log_dist_mall_m
+  # traffic (probe)
+  - speed_mean
+  - speed_mean_daytime
+  - speed_mean_morning_peak
+  - speed_mean_evening_peak
+  - pct_below_20kmh_daytime
+  - pct_below_20kmh_morning_peak
+  - pct_below_20kmh_evening_peak
+  - congestion_score
+  - speed_drop_morning
+  # exposure
+  - probe_count
+  - probe_count_daytime
+  - probe_count_morning_peak
+  - probe_count_evening_peak
+  - probe_count_late_night
+  - probe_count_night
+  - has_probe_data
+  - log_probe_count
+  - exposure
+  - log_exposure
