@@ -8,6 +8,12 @@ pipeline:
   preprocess: true   # Step 2: Clean data and Segment roads
   features: true      # Step 3: Generate all feature parquets
   matrix: true        # Step 4: Merge everything into the final dataset
+  train: true         # Step 6: Train every model listed in train_configs
+
+  # Training runs (one file per run, see configs/train/)
+  train_configs:
+    - configs/train/xgb_severe.yaml
+    - configs/train/nb_severe.yaml
   
   # Global Settings
   force: false        # If false, skips work if output file already exists
