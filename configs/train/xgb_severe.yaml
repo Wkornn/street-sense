@@ -20,14 +20,13 @@ model:
     subsample: 0.8
     colsample_bytree: 0.8
     random_state: 42
+  calibration: isotonic              # isotonic or null (classifier plugins only)
 
 split:
   method: random                     # TODO: spatial split (see to-do list)
   cal_size: 0.2
   test_size: 0.2
   seed: 42
-
-calibration: isotonic
 
 output:
   model_dir: models/xgb_severe

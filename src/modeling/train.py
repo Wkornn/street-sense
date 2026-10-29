@@ -2,41 +2,25 @@
 
     python -m src.modeling.train --config configs/train/xgb_severe.yaml
 
-Flow: config -> data -> target -> features -> split -> model -> fit
-      -> calibrate -> evaluate -> save model + metrics + risk scores
+Flow: config -> data -> target -> features -> split
+      -> plugin.fit (model-specific) -> evaluate -> plugin.save + meta + risk scores
 """
 
 import argparse
 import json
-import pickle
 from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
-from sklearn.calibration import CalibratedClassifierCV
 
 from src.modeling import data
 from src.modeling.config import load_config
 from src.modeling.evaluate import classification_metrics
-from src.modeling.models import build_model
-
-try:  # scikit-learn >= 1.6
-    from sklearn.frozen import FrozenEstimator
-except ImportError:  # older scikit-learn
-    FrozenEstimator = None
-
-
-def calibrate(model, method, X_cal, y_cal):
-    """Fit a calibrator on a held-out split, keeping the already-trained model fixed."""
-    if FrozenEstimator is not None:
-        calibrated = CalibratedClassifierCV(FrozenEstimator(model), method=method)
-    else:
-        calibrated = CalibratedClassifierCV(model, method=method, cv="prefit")
-    return calibrated.fit(X_cal, y_cal)
+from src.modeling.models import get_plugin
 
 
 def run(cfg):
-    # 1. Data
+    # 1. Data (shared by every approach)
     df = data.load_dataset(cfg["data_path"])
     df = data.add_exposure(df)
     X = data.select_features(df, cfg["features"])
@@ -45,26 +29,21 @@ def run(cfg):
     print(f"Run '{cfg['name']}': {X.shape[1]} features | "
           f"train {len(X_train):,} / cal {len(X_cal):,} / test {len(X_test):,}")
 
-    # 2. Model
-    pos_weight = (y_train == 0).sum() / (y_train == 1).sum()
-    model = build_model(cfg["model"], scale_pos_weight=pos_weight)
-    model.fit(X_train, y_train)
+    # 2. Fit (everything model-specific happens inside the plugin)
+    plugin = get_plugin(cfg["model"]["type"])
+    model = plugin.fit(cfg["model"], X_train, y_train, X_cal, y_cal)
 
-    # 3. Calibration
-    if cfg.get("calibration"):
-        model = calibrate(model, cfg["calibration"], X_cal, y_cal)
-
-    # 4. Evaluation (test split only)
-    metrics = classification_metrics(y_test, model.predict_proba(X_test)[:, 1])
+    # 3. Evaluate on the test split only
+    metrics = classification_metrics(y_test, model.predict_risk(X_test))
     print(json.dumps(metrics, indent=2))
 
-    # 5. Save
+    # 4. Save: model files (plugin) + run info (same for every approach)
     out_dir = Path(cfg["output"]["model_dir"])
     out_dir.mkdir(parents=True, exist_ok=True)
-    with open(out_dir / "model.pkl", "wb") as f:  # TODO: native format (step 7)
-        pickle.dump(model, f)
+    plugin.save(model, out_dir)
     meta = {
         "name": cfg["name"],
+        "model_type": cfg["model"]["type"],
         "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "features": cfg["features"],
         "metrics": metrics,
@@ -72,10 +51,10 @@ def run(cfg):
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
     (out_dir / "config.yaml").write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
 
-    # 6. Score every segment
+    # 5. Score every segment
     scores_path = Path(cfg["output"]["risk_scores"])
     scores_path.parent.mkdir(parents=True, exist_ok=True)
-    scores = df[["segment_id"]].assign(risk_score=model.predict_proba(X)[:, 1])
+    scores = df[["segment_id"]].assign(risk_score=model.predict_risk(X))
     scores.to_parquet(scores_path, index=False)
     print(f"Saved model -> {out_dir}/  |  risk scores -> {scores_path}")
     return metrics
