@@ -17,3 +17,4 @@ optuna
 requests
 rtree
 pyogrio
+statsmodels
