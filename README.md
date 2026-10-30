@@ -76,7 +76,15 @@ Run the configured pipeline from the project root:
 python scripts/run_pipeline.py
 ```
 
-Phases run in order: ingestion → preprocessing and road segmentation → features → feature matrix and model dataset → **training** (every config listed in `pipeline.yaml` → `train_configs`). Phases whose outputs already exist are skipped.
+Phases run in order:
+
+1. **Ingestion:** OSM layers, MOT accidents, and (if `run_probe: true`) probe archives
+2. **Preprocessing:** clean accidents, split roads into 100 m segments, snap accidents to the nearest segment (≤ 50 m)
+3. **Features:** road, accident, spatial and (optionally) probe features
+4. **Feature matrix and model dataset**
+5. **Training:** every config listed in `pipeline.yaml` → `train_configs`
+
+Steps whose outputs already exist are skipped. The download steps also skip files they already have.
 
 ```bash
 python scripts/run_pipeline.py --force          # rebuild everything, including retraining
@@ -84,7 +92,7 @@ python scripts/run_pipeline.py --force          # rebuild everything, including 
 
 Probe processing is slow and downloads large archives. Set `run_probe: false` in `configs/pipeline.yaml` unless traffic features are needed. The command-line flags can switch phases on but not off; to run fewer phases, set them to `false` in `pipeline.yaml`.
 
-> **Known gap:** `run_pipeline.py` does not yet run `src/geospatial/spatial/snap_accidents.py` (snaps accidents to road segments) or `src/ingestion/load_probe_data.py` (downloads probe data). Run them manually after preprocessing when building from scratch.
+> **Rebuilding after changing segmentation or accident cleaning:** every later step must be rebuilt too, because the segment IDs and accident features depend on them. Use `--force`, or delete the affected outputs, so nothing mixes old and new data.
 
 Main artifacts:
 

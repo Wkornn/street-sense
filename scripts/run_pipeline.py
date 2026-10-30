@@ -77,6 +77,9 @@ def main():
                    output_files=d_cfg.get("boundary", {}).get("bangkok"), 
                    force=args.force)
         run_script("src/ingestion/load_accident_data.py", force=args.force)
+        # Probe archives are large; the script skips months that are already extracted
+        if args.probe or args.all:
+            run_script("src/ingestion/load_probe_data.py", force=args.force)
 
     # 2. Phase: Preprocessing
     if args.preprocess or args.all:
@@ -87,6 +90,10 @@ def main():
         seg_cfg = d_cfg.get("road_segments", {})
         run_script("src/geospatial/spatial/segment_roads.py", 
                    output_files=[seg_cfg.get("output"), seg_cfg.get("intersections_output")], 
+                   force=args.force)
+        # Needs both outputs above: clean accidents + road segments
+        run_script("src/geospatial/spatial/snap_accidents.py",
+                   output_files=seg_cfg.get("snapped_accidents_output"),
                    force=args.force)
 
     # 3. Phase: Feature Engineering
