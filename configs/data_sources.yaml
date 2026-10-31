@@ -38,7 +38,7 @@ boundary:
 
 features:
   output_dir: "data/processed/features"
-  buffer_m: 500
+  buffer_m: 200                    # POI count / building density radius; columns are named *_<buffer_m>m
   poi_types:
     amenity: [school, hospital, university, fuel]
     shop: [mall, supermarket]

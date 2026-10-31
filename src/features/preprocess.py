@@ -46,6 +46,7 @@ def main():
     model_cfg = load_yaml(MODEL_CONFIG_PATH)
     
     output_dir = data_cfg["features"]["output_dir"]
+    buf = data_cfg["features"]["buffer_m"]   # feat_spatial.py names its columns after it
     prep_cfg = model_cfg.get("preprocessing", {})
 
     # Parameters from config
@@ -140,7 +141,7 @@ def main():
         ).fillna(0)
 
     # Log transforms for heavily skewed count features and large distances
-    for col in ["probe_count", "poi_count_200m", "building_density_200m", 
+    for col in ["probe_count", f"poi_count_{buf}m", f"building_density_{buf}m",
                 "dist_intersection_m", "dist_school_m", "dist_hospital_m", 
                 "dist_fuel_m", "dist_mall_m",
                 "acc_total", "acc_rate_per_100m", "acc_morning_peak", 
