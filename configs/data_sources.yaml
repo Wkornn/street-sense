@@ -15,7 +15,7 @@ road_segments:
   input: "data/raw/osm/osm_roads.gpkg"
   output: "data/processed/road_segments.gpkg"
   intersections_output: "data/processed/intersections.gpkg"
-  snapped_accidents_output: "data/processed/accidents_snapped.gpkg"
+  snapped_accidents_output: "data/processed/accidents_snapped.parquet"
   snap_max_distance_m: 50
   segment_length_m: 100
   projected_crs: "EPSG:32647"
@@ -38,7 +38,7 @@ boundary:
 
 features:
   output_dir: "data/processed/features"
-  buffer_m: 500
+  buffer_m: 200                    # POI count / building density radius; columns are named *_<buffer_m>m
   poi_types:
     amenity: [school, hospital, university, fuel]
     shop: [mall, supermarket]

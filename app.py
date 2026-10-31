@@ -42,7 +42,8 @@ with open(APP_CFG_PATH, encoding="utf-8") as _f:
     MODEL_DIR = Path(yaml.safe_load(_f)["model_dir"])
 MODEL_META_PATH = MODEL_DIR / "meta.json"
 RISK_SCORES_PATH = MODEL_DIR / "risk_scores.parquet"   # written by train.py next to the model
-SNAPPED_ACCIDENTS_PATH = Path("data/processed/accidents_snapped.parquet")
+with open(DATA_CFG_PATH, encoding="utf-8") as _f:
+    SNAPPED_ACCIDENTS_PATH = Path(yaml.safe_load(_f)["road_segments"]["snapped_accidents_output"])
 
 DATA_ACKNOWLEDGEMENT = (
     "Data: OpenStreetMap contributors (ODbL), Ministry of Transport Data Catalog, "
