@@ -200,13 +200,19 @@ Same target (fatal or serious accident), same features where possible, same test
 
 | Run | ROC-AUC | PR-AUC | Top-decile lift | Notes |
 |---|---|---|---|---|
-| `xgb_severe` | **0.859** | **0.213** | **6.8×** | Default model for the app |
-| `nb_severe` | 0.797 | 0.098 | 5.7× | Interpretable baseline; predicts expected accident counts |
-| `fcm_xgb_v4` | 0.229 | 0.006 | 0.3× | Experimental; see below |
+| `xgb_severe` | **0.981** | **0.421** | **9.7×** | Default model for the app |
+| `nb_severe` | 0.971 | 0.249 | 9.4× | Interpretable baseline; predicts expected accident counts |
+| `fcm_xgb_v4` | 0.087 | 0.005 | 0.1× | Experimental; see below |
 
-Each folder's `meta.json` holds the full metrics. Top-decile lift = accident rate in the 10% highest-scored segments divided by the overall rate. The split is random for now; a spatial split (planned) will give more honest, likely lower, scores, because neighbouring segments are very similar.
+Each folder's `meta.json` holds the full metrics. Top-decile lift = accident rate in the 10% highest-scored segments divided by the overall rate (about 0.9% of segments had a fatal or serious accident).
 
-**Why V4 fails:** its clustering assumes slow, congested roads are risky. Fatal and serious accidents happen mostly on fast, major roads (the XGBoost model's top factors are `highway_rank` and `speed_mean`), so V4 ranks roads almost in reverse. An earlier version looked better only because accident-history columns leaked into its inputs.
+**How to read these numbers:**
+
+*   **The model mostly recognises fast, major roads.** 62% of segments with a fatal or serious accident are motorways or trunk roads, which make up only 4% of all segments. Road rank or average speed alone already reach an AUC of about 0.95. This matches road-safety knowledge (speed drives severity), but it may also partly reflect which accidents the MOT data records, so check the source's coverage before drawing conclusions about minor roads.
+*   **The split is random for now.** Neighbouring segments are very similar, so test segments have near-copies in training. A spatial split (planned) will give more honest, likely lower, scores.
+*   **Earlier results were lower (AUC 0.86) because the old data was inconsistent.** The committed road segments and the accident snapping came from a different segmentation than the features, so about half of the accident labels sat on the wrong segments. A full rebuild from raw data fixed this (October 2026).
+
+**Why V4 fails:** its clustering assumes slow, congested roads are risky. Fatal and serious accidents happen mostly on fast, major roads, so V4 ranks roads almost exactly in reverse (AUC 0.09; flipped, it would score 0.91). An earlier version looked less bad only because accident-history columns leaked into its inputs.
 
 ### Switching the model the app serves
 
