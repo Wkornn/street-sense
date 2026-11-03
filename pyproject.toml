@@ -1,0 +1,9 @@
+# Project metadata and dependencies are added in chore/pin-deps.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]          # so tests can `import src...` from the project root
+markers = [
+    "data: checks on real pipeline outputs; skipped when the files don't exist",
+]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning"]
