@@ -257,6 +257,23 @@ streamlit run app.py
 
 When adding a feature column: generate it in `src/features/`, then add it to a feature set in `configs/features.yaml`.
 
+### Running tests
+
+```bash
+pytest              # everything (about 3 seconds)
+pytest -m data      # only the checks on your real pipeline outputs
+```
+
+| File | What it protects |
+|---|---|
+| `tests/test_segmentation.py` | Segments are at most 100 m and cover the road; intersections need 3 road ends |
+| `tests/test_snapping.py` | Accidents go to the nearest segment within 50 m, otherwise `-1` |
+| `tests/test_features.py` | Shared feature prep: missing values → 0, missing columns raise, targets and split; **the app scores a segment exactly like training** |
+| `tests/test_plugins.py` | Every registered plugin trains through `train.py`, reloads with identical scores, gives 0–1 risk and one explanation value per feature. A new plugin must be added here |
+| `tests/test_data_outputs.py` | Real outputs: unique segment IDs, snap distances, dataset matches the road segments, model scores are not stale. Skipped when the files don't exist |
+
+The fast tests use small synthetic data, so they don't need the real dataset.
+
 ---
 
 ## 📂 Project Structure
