@@ -10,6 +10,17 @@ cache/
 .env
 
 # ----------------------------------------
+# Environments and build output
+# (rebuilt from pyproject.toml + uv.lock with `uv sync`)
+# ----------------------------------------
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# ----------------------------------------
 # MLflow / Tracking
 # ----------------------------------------
 mlruns/
