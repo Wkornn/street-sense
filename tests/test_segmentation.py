@@ -1,5 +1,7 @@
 """Road segmentation: roads are cut into pieces of at most segment_length_m."""
 
+import itertools
+
 import pytest
 from shapely.geometry import LineString
 
@@ -23,7 +25,7 @@ def test_pieces_are_contiguous_on_a_bent_road():
     road = LineString([(0, 0), (150, 0), (150, 130)])  # 280 m with a corner
     pieces = split_line(road, 100)
     assert len(pieces) == 3
-    for a, b in zip(pieces, pieces[1:]):
+    for a, b in itertools.pairwise(pieces):
         assert a.coords[-1] == pytest.approx(b.coords[0])
 
 

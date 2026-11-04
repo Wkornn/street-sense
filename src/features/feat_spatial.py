@@ -15,11 +15,10 @@ Output: data/processed/features/feat_spatial.parquet
 """
 
 import os
-import yaml
-import numpy as np
-import pandas as pd
+
 import geopandas as gpd
-from shapely.geometry import Point
+import numpy as np
+import yaml
 
 CONFIG_PATH = "configs/data_sources.yaml"
 

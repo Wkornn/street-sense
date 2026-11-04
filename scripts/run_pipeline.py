@@ -1,8 +1,9 @@
+import argparse
+import os
 import subprocess
 import sys
-import argparse
 import time
-import os
+
 import yaml
 
 DATA_CONFIG_PATH = "configs/data_sources.yaml"
@@ -41,7 +42,7 @@ def run_script(script_path, output_files=None, force=False, args=None, module=Fa
     start_time = time.time()
     try:
         cmd = [sys.executable] + (["-m", script_path] if module else [script_path]) + (args or [])
-        result = subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True)
         elapsed = time.time() - start_time
         print(f">>> Success: {label} (Took {elapsed:.1f}s)")
         return True

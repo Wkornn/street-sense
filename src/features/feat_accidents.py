@@ -20,9 +20,9 @@ Output: data/processed/features/feat_accidents.parquet
 """
 
 import os
-import yaml
-import pandas as pd
+
 import geopandas as gpd
+import yaml
 
 CONFIG_PATH = "configs/data_sources.yaml"
 

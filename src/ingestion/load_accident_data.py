@@ -1,10 +1,12 @@
-import urllib.request
-import ssl
-import json
 import csv
-import time
-import yaml
+import json
 import os
+import ssl
+import time
+import urllib.error
+import urllib.request
+
+import yaml
 
 BASE_URL = "https://datagov.mot.go.th/api/3/action/datastore_search"
 context = ssl._create_unverified_context()
@@ -44,7 +46,8 @@ def fetch_and_save(resource_id, output_path, limit=1000, sleep_time=0.3):
                 offset += batch_size
                 time.sleep(sleep_time)
 
-        except Exception as e:
+        # Network problems, or a response that isn't the expected JSON
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as e:
             print(f"Error at offset {offset}: {e}")
             break
 
@@ -69,7 +72,7 @@ def main():
         print(f"\n=== Year {year} ===")
 
         if os.path.exists(raw_path):
-            print(f"  Already exists, skipping.")
+            print("  Already exists, skipping.")
             continue
 
         fetch_and_save(resource_id, raw_path)

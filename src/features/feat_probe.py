@@ -1,10 +1,11 @@
-import os
 import glob
-import yaml
+import os
+import pickle
+
+import geopandas as gpd
 import numpy as np
 import pandas as pd
-import geopandas as gpd
-import pickle
+import yaml
 from tqdm import tqdm
 
 CONFIG_PATH = "configs/data_sources.yaml"
@@ -88,7 +89,7 @@ def main():
     accum = {} # (sid, bin) -> stats
     processed_files = set()
 
-    print(f"--- Feature Engineering: Probe Data (Time-Binned) ---")
+    print("--- Feature Engineering: Probe Data (Time-Binned) ---")
     
     if os.path.exists(output_path) and not os.path.exists(state_file):
         print(f"\n[!] WARNING: Final output already exists at: {output_path}")

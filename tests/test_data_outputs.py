@@ -15,11 +15,10 @@ import yaml
 
 pytestmark = pytest.mark.data
 
-CFG = yaml.safe_load(open("configs/data_sources.yaml", encoding="utf-8"))
+CFG = yaml.safe_load(Path("configs/data_sources.yaml").read_text(encoding="utf-8"))
 SEGMENTS = Path(CFG["road_segments"]["output"])
 SNAPPED = Path(CFG["road_segments"]["snapped_accidents_output"])
 DATASET = Path(CFG["features"]["output_dir"]) / "model_dataset.parquet"
-
 
 def need(*paths):
     missing = [str(p) for p in paths if not Path(p).exists()]
@@ -64,7 +63,7 @@ def test_dataset_matches_segments(segments):
 @pytest.mark.parametrize("model_dir", sorted(p for p in Path("models").glob("*") if (p / "meta.json").exists()))
 def test_model_scores_cover_dataset(model_dir):
     need(DATASET)
-    meta = json.load(open(model_dir / "meta.json"))
+    meta = json.loads((model_dir / "meta.json").read_text())
     scores = pd.read_parquet(model_dir / "risk_scores.parquet")
     ds = pd.read_parquet(DATASET, columns=["segment_id"])
     assert scores["segment_id"].is_unique

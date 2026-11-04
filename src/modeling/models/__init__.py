@@ -54,6 +54,8 @@ def load_model(model_dir):
 
 
 # Importing the modules runs their @register decorators.
-from . import fcm_xgb  # noqa: E402,F401  (experimental)
-from . import neg_binomial  # noqa: E402,F401
-from . import xgb_classifier  # noqa: E402,F401
+from . import (
+    fcm_xgb,  # noqa: F401  (experimental)
+    neg_binomial,  # noqa: F401
+    xgb_classifier,  # noqa: F401
+)

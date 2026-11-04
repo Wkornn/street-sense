@@ -10,12 +10,13 @@ Config: configs/data_sources.yaml
 """
 
 import os
-import yaml
-import numpy as np
-import geopandas as gpd
-from shapely.ops import substring
-from shapely.geometry import Point
 from collections import Counter
+
+import geopandas as gpd
+import numpy as np
+import yaml
+from shapely.geometry import Point
+from shapely.ops import substring
 
 CONFIG_PATH = "configs/data_sources.yaml"
 

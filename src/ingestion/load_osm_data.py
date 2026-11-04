@@ -1,6 +1,8 @@
-import osmnx as ox
-import yaml
 import os
+
+import osmnx as ox
+import requests
+import yaml
 
 
 def fetch_and_save(place, tags, output_path):
@@ -40,7 +42,8 @@ def fetch_and_save_boundary(place, output_path):
         gdf = ox.geocode_to_gdf(place)
         gdf.to_file(output_path, driver="GPKG")
         print(f"Saved boundary → {output_path}")
-    except Exception as e:
+    # Network problems (requests) or osmnx "no result / bad response" errors (ValueError subclasses)
+    except (requests.RequestException, ValueError) as e:
         print(f"Error fetching boundary: {e}")
 
 

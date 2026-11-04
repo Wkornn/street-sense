@@ -11,7 +11,7 @@ models by changing one line (model_dir) in configs/app.yaml.
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -49,7 +49,7 @@ def run(cfg):
         "name": cfg["name"],
         "model_type": cfg["model"]["type"],
         "target": cfg["target"],
-        "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "trained_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "features": cfg["features"],
         "metrics": metrics,
     }

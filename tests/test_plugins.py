@@ -4,6 +4,7 @@ A new plugin must get an entry in PLUGIN_RUNS, otherwise test_every_plugin_is_te
 """
 
 import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -55,7 +56,7 @@ def trained(request, toy_dataset, tmp_path):
 def test_run_writes_model_folder(trained):
     _, cfg, metrics, _ = trained
     out = cfg["output"]["model_dir"]
-    meta = json.load(open(f"{out}/meta.json"))
+    meta = json.loads(Path(out, "meta.json").read_text())
     assert meta["model_type"] == cfg["model"]["type"]
     assert meta["features"] == cfg["features"]
     assert set(metrics) >= {"roc_auc", "pr_auc", "brier", "top_decile_lift"}
