@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 from shapely.geometry import LineString
 
-
 FEATURES_V2 = [
     "highway_rank",
     "lanes",

@@ -14,9 +14,10 @@ Run from project root:
 
 import glob
 import os
-import yaml
+
 import geopandas as gpd
 import pandas as pd
+import yaml
 
 SEVERITY_LABEL = {0: "none", 1: "minor", 2: "serious", 3: "fatal"}
 

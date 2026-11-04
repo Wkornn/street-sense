@@ -1,20 +1,22 @@
-import streamlit as st
-import pandas as pd
-import geopandas as gpd
-import pydeck as pdk
 import json
-import yaml
 import os
+
+import geopandas as gpd
+import pandas as pd
+import pydeck as pdk
+import streamlit as st
+import yaml
 from dotenv import load_dotenv
 
 # Load environment variables (e.g., GEMINI_API_KEY)
 load_dotenv()
 
 from pathlib import Path
-from src.modeling.xai_explainer import explain_segment
-from src.modeling.narrator import generate_explanation
-from src.modeling.models import load_model
+
 from src.modeling import data
+from src.modeling.models import load_model
+from src.modeling.narrator import generate_explanation
+from src.modeling.xai_explainer import explain_segment
 
 st.set_page_config(page_title="H-Spot Bangkok", layout="wide", initial_sidebar_state="expanded")
 
@@ -211,7 +213,7 @@ def main():
     st.sidebar.markdown("Bangkok Road Risk Assessment")
 
     # Load configuration at the start
-    data_cfg, app_cfg = load_config()
+    _, app_cfg = load_config()
     top_k = app_cfg.get("explanation", {}).get("top_k_features", 5)
 
     # Handle map selection from session state (prevents multiple refreshes)
@@ -219,7 +221,7 @@ def main():
         event = st.session_state.risk_map
         if event and event.get("selection") and event["selection"].get("objects"):
             selection_objs = event["selection"]["objects"]
-            if "risk-paths" in selection_objs and selection_objs["risk-paths"]:
+            if selection_objs.get("risk-paths"):
                 st.session_state.selected_segment_id = selection_objs["risk-paths"][0]["segment_id"]
 
     prototype_missing = missing_paths(RISK_SCORES_PATH, SEGMENTS_PATH, MODEL_DATASET_PATH, MODEL_META_PATH)
@@ -303,7 +305,7 @@ def main():
                                 "Prototype narrative (Static): this segment is flagged mainly because sample congestion, nearby activity density, "
                                 "and morning speed drop increase the synthetic risk score."
                             )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001 - show the error in the sidebar instead of crashing the dashboard
                     st.sidebar.error(f"Analysis error: {e}")
             
             if st.button("Close Analysis"):
@@ -318,7 +320,7 @@ def main():
         st.rerun()
     st.sidebar.caption(DATA_ACKNOWLEDGEMENT)
     
-    data_cfg, app_cfg = load_config()
+    _, app_cfg = load_config()
 
     if mode == "1. Predictive Risk Map":
         st.header("🔮 Predictive Risk Map")

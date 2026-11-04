@@ -44,6 +44,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9,<10",
+    "ruff>=0.17,<0.18",
 ]
 
 # Exact versions used to lock: the Mac environment that trained the current models (2026-11).
@@ -85,3 +86,7 @@ markers = [
     "data: checks on real pipeline outputs; skipped when the files don't exist",
 ]
 filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning"]
+
+
+[tool.ruff]
+extend-exclude = ["notebooks"]

@@ -1,10 +1,11 @@
 import os
 import tarfile
-import requests
-import pandas as pd
+
 import geopandas as gpd
-from geopandas import points_from_xy
+import pandas as pd
+import requests
 import yaml
+from geopandas import points_from_xy
 
 BASE_URL = "https://itic.longdo.com/opendata/probe-data"
 RAW_DIR = "data/raw/iTIC_probe_data"
@@ -61,8 +62,7 @@ def download_file(url, file_path, retries=5):
                 r.raise_for_status()
                 mode = "ab" if existing_size else "wb"
                 with open(file_path, mode) as f:
-                    for chunk in r.iter_content(chunk_size=1024 * 1024):
-                        f.write(chunk)
+                    f.writelines(r.iter_content(chunk_size=1024 * 1024))
             return
         except Exception as e:
             print(f"  Attempt {attempt}/{retries} failed: {e}")
@@ -121,7 +121,8 @@ def main():
             extract_bangkok(tar_path, out_path, boundary, bbox)
             os.remove(tar_path)
             print(f"  Deleted raw: {filename}")
-        except Exception as e:
+        # Broken/truncated archive, unreadable rows, or disk problems
+        except (tarfile.TarError, EOFError, OSError, pd.errors.ParserError, ValueError) as e:
             print(f"  Extraction failed: {e}")
 
     print(f"\nDone → {OUT_DIR}")

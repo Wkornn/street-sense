@@ -7,7 +7,9 @@ impacts into human-readable narratives.
 """
 
 import os
+
 import google.generativeai as genai
+
 
 def generate_explanation(segment_id, risk_score, top_factors, model_name="gemini-2.5-flash", stream=False):
     """
@@ -52,10 +54,10 @@ def generate_explanation(segment_id, risk_score, top_factors, model_name="gemini
                         for chunk in response:
                             if chunk.text:
                                 yield chunk.text
-                    except Exception as gen_e:
+                    except Exception as gen_e:  # noqa: BLE001 - LLM errors are shown in the text, not raised
                         yield f"\n\n⚠️ [Streaming Error] {gen_e}"
                 return chunk_generator()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - Gemini raises many error types; never crash the app
                 err = f"Error starting stream: {e}"
                 print(err)
                 def error_gen(): yield f"⚠️ {err}"
@@ -64,7 +66,7 @@ def generate_explanation(segment_id, risk_score, top_factors, model_name="gemini
             response = model.generate_content(prompt)
             return response.text.strip()
         
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - Gemini raises many error types; never crash the app
         error_msg = f"Error in LLM Narrative generation: {e}"
         print(error_msg)
         # Return a generator that yields the error if streaming was requested

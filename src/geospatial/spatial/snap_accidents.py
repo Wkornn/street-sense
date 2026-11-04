@@ -9,10 +9,10 @@ Config: configs/data_sources.yaml
 """
 
 import os
-import yaml
-import numpy as np
+
 import geopandas as gpd
-from shapely.ops import nearest_points
+import numpy as np
+import yaml
 
 CONFIG_PATH = "configs/data_sources.yaml"
 

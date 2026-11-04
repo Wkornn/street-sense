@@ -12,8 +12,9 @@ Output: data/processed/features/feature_matrix.parquet
 """
 
 import os
-import yaml
+
 import pandas as pd
+import yaml
 
 CONFIG_PATH = "configs/data_sources.yaml"
 

@@ -5,8 +5,10 @@ Use the output to decide what values to put in configs/data_sources.yaml.
 Output: data/raw/osm_schema.csv
 """
 import os
+
 import osmnx as ox
 import pandas as pd
+import requests
 
 SAMPLE_PLACE = "Bangkok, Thailand"
 
@@ -47,12 +49,13 @@ def main():
 
         try:
             gdf = ox.features_from_place(SAMPLE_PLACE, tags={key: True})
-        except Exception as e:
+        # osmnx raises a ValueError subclass when a tag has no data; requests errors = network
+        except (requests.RequestException, ValueError) as e:
             print(f"  No data: {e}")
             continue
 
         print(f"  {len(gdf)} features found")
-        print(f"  Values:")
+        print("  Values:")
         for val, count in gdf[key].value_counts().items():
             print(f"    {val:<35} {count}")
             all_pairs.append({"key": key, "value": val, "count": count})
