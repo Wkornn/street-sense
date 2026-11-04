@@ -12,7 +12,6 @@ Usage:
 import argparse
 import json
 import os
-import sys
 from pathlib import Path
 
 import pandas as pd
@@ -21,11 +20,6 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env
 load_dotenv()
-
-# Automatically add project root to sys.path to fix "ModuleNotFoundError: No module named 'src'"
-project_root = str(Path(__file__).resolve().parents[2])
-if project_root not in sys.path:
-    sys.path.append(project_root)
 
 # Local Imports
 from src.modeling import data

@@ -5,23 +5,12 @@ import pydeck as pdk
 import json
 import yaml
 import os
-import sys
 from dotenv import load_dotenv
 
 # Load environment variables (e.g., GEMINI_API_KEY)
 load_dotenv()
 
-# Windows compatibility fix for shap/pyspark
-if sys.platform == "win32":
-    from unittest.mock import MagicMock
-    sys.modules["pyspark"] = MagicMock()
-
-# Set up local imports
 from pathlib import Path
-project_root = str(Path(__file__).resolve().parent)
-if project_root not in sys.path:
-    sys.path.append(project_root)
-
 from src.modeling.xai_explainer import explain_segment
 from src.modeling.narrator import generate_explanation
 from src.modeling.models import load_model
