@@ -44,7 +44,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9,<10",
-    "ruff>=0.17.3",
+    "ruff>=0.17,<0.18",
 ]
 
 # Exact versions used to lock: the Mac environment that trained the current models (2026-11).

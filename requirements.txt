@@ -289,3 +289,4 @@ watchdog==6.0.0 ; sys_platform != 'darwin'
     # via streamlit
 xgboost==3.2.0
     # via street-sense
+ruff==0.17.3
