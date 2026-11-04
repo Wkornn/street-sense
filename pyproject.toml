@@ -1,8 +1,57 @@
-# Project metadata and dependencies are added in chore/pin-deps.
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+# The project's ID card
+[project]
+name = "street-sense"
+version = "0.1.0"
+description = "Spatial accident risk prediction for Bangkok road segments."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+
+# Packages, Exact versions are pinned in uv.lock.
+dependencies = [
+    # App
+    "streamlit>=1.56,<2",
+    "pydeck>=0.9,<0.10",
+    "python-dotenv>=1.0,<2",
+    "google-generativeai>=0.8,<0.9",
+    # Data
+    "pandas>=2.3,<3",
+    "numpy>=2.2,<3",
+    "pyarrow>=23.0,<24",
+    "pyyaml>=6.0,<7",
+    "requests>=2.31,<3",
+    "tqdm>=4.67,<5",
+    # Geospatial
+    "geopandas>=1.1,<2",
+    "shapely>=2.1,<3",
+    "pyogrio>=0.11,<0.12",
+    "osmnx>=2.1,<3",
+    # Modeling
+    "scikit-learn>=1.7,<2",
+    "xgboost>=3.2,<4",
+    "statsmodels>=0.14,<0.15",
+    "joblib>=1.5,<2",
+    # Experimental V4 plugin (fcm_xgb)
+    "scikit-fuzzy>=0.5,<0.6",
+    "imbalanced-learn>=0.14,<0.15",
+    "optuna>=4.8,<5",
+]
+
+# not installed in Docker / production
+[dependency-groups]
+dev = [
+    "pytest>=9,<10",
+]
+
+[tool.setuptools.packages.find]
+include = ["src*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]          # so tests can `import src...` from the project root
+pythonpath = ["."]
 markers = [
     "data: checks on real pipeline outputs; skipped when the files don't exist",
 ]
