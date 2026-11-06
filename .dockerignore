@@ -1,0 +1,26 @@
+# Environments and caches
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# local-only data
+data/
+models/
+scratch/
+notebooks/
+mlruns/
+mlflow.db
+cache/
+docs/
+archive/
+*.egg-info/
+
+# Git and editor files
+.git/
+.github/
+.vscode/
+.DS_Store
+
+# Secrets
+.env

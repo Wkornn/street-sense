@@ -218,6 +218,7 @@ rpds-py==2026.9.1
     # via
     #   jsonschema
     #   referencing
+ruff==0.17.3
 scikit-fuzzy==0.5.0
     # via street-sense
 scikit-learn==1.7.2
@@ -289,4 +290,3 @@ watchdog==6.0.0 ; sys_platform != 'darwin'
     # via streamlit
 xgboost==3.2.0
     # via street-sense
-ruff==0.17.3

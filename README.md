@@ -134,6 +134,25 @@ streamlit run app.py
 
 If processed artifacts are missing, the app falls back to a small prototype map (`python scripts/create_prototype_data.py` creates local prototype artifacts).
 
+### 6. Run with Docker (optional)
+
+The image packages the app with Linux, Python 3.11 and the exact versions from `uv.lock`, so it runs the same on any machine. Data and models are not built into the image; `compose.yaml` mounts your local `data/` and `models/` folders, and passes `.env` (Gemini key) in at start time.
+
+```bash
+docker compose up --build        # build if needed and start; open http://localhost:8501
+docker compose up -d --build     # same, in the background
+docker compose logs -f           # follow the app's output
+docker compose down              # stop
+```
+
+| File | Role |
+|---|---|
+| `Dockerfile` | How the image is built: Python 3.11 slim, `uv sync --frozen --no-dev`, Streamlit on port 8501 |
+| `.dockerignore` | Keeps `.venv/`, data, models, notebooks, git files and `.env` out of the image |
+| `compose.yaml` | Ports, the data/model mounts and `.env`, so starting is one command |
+
+Build the dataset and train the models first (step 4); the container only serves them.
+
 ---
 
 ## 🧠 How Training Works
@@ -297,6 +316,26 @@ pytest -m data      # only the checks on your real pipeline outputs
 
 The fast tests use small synthetic data, so they don't need the real dataset.
 
+### Code checks
+
+```bash
+uv run ruff check .          # rules: ruff 0.17 defaults (version locked in uv.lock), notebooks excluded
+uv run ruff check . --fix    # apply the safe automatic fixes
+```
+
+After `uv add` / `uv remove`, re-export `requirements.txt` (command in [Create an environment](#1-create-an-environment)).
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request, on a fresh Ubuntu machine:
+
+| Job | Steps |
+|---|---|
+| `check` | `uv sync --frozen` → `ruff check` → `pytest -m "not data"` → `requirements.txt` matches `uv.lock` |
+| `docker` | Builds the image and checks the app's code imports inside it |
+
+The real-data checks (`pytest -m data`) can't run in CI because the data isn't in git; run them locally after rebuilding the data.
+
 ---
 
 ## 📂 Project Structure
@@ -304,6 +343,8 @@ The fast tests use small synthetic data, so they don't need the real dataset.
 ```text
 street-sense/
 ├── app.py                # Streamlit dashboard
+├── Dockerfile            # App image (+ .dockerignore, compose.yaml)
+├── .github/workflows/    # CI: ruff, tests, requirements check, Docker build
 ├── scripts/              # Pipeline orchestration (run_pipeline.py)
 ├── src/
 │   ├── ingestion/        # Data loading (OSM, MOT, probes)
@@ -314,7 +355,8 @@ street-sense/
 │   └── train/            # One file per training run
 ├── data/                 # Raw and processed data (not in git)
 ├── models/               # One folder per trained model (not in git)
-└── notebooks/            # EDA and result analysis
+├── notebooks/            # EDA and result analysis
+└── tests/                # pytest suite
 ```
 
 ---

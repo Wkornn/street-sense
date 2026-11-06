@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    image: street-sense
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    env_file:
+      - path: .env
+        required: false
