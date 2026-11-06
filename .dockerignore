@@ -1,4 +1,4 @@
-# Environments and caches (rebuilt inside the image)
+# Environments and caches
 .venv/
 __pycache__/
 .pytest_cache/
@@ -22,5 +22,5 @@ archive/
 .vscode/
 .DS_Store
 
-# Secrets: never bake keys into an image
+# Secrets
 .env
