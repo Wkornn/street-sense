@@ -32,3 +32,12 @@ jobs:
         run: |
           uv export --frozen --format requirements-txt --no-hashes -o requirements.txt
           git diff --exit-code requirements.txt
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t street-sense .
+      - name: Smoke test
+        run: docker run --rm street-sense python -c "from src.modeling.models import MODELS; import streamlit, geopandas, xgboost; print('ok', sorted(MODELS))"
