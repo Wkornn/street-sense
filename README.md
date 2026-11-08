@@ -175,7 +175,8 @@ model:
   type: xgb_classifier                # which plugin (see below)
   params: {n_estimators: 300, max_depth: 6, learning_rate: 0.05}
   calibration: isotonic
-split: {method: random, cal_size: 0.2, test_size: 0.2, seed: 42}
+split: {method: spatial, cell_size_m: 2000, segments: data/processed/road_segments.gpkg,
+        cal_size: 0.2, test_size: 0.2, seed: 42}   # or method: random
 output:
   model_dir: models/xgb_severe
 ```
@@ -185,7 +186,7 @@ Changing parameters, features, target or split needs **only a new YAML file**. A
 ### Flow
 
 ```
-config → load data → target → features → split (60/20/20)
+config → load data → target → features → split (60/20/20, random or spatial)
        → plugin.fit → evaluate on test split → plugin.save + meta.json + risk_scores.parquet
 ```
 
@@ -238,20 +239,21 @@ models/xgb_severe/
 
 ### Comparing approaches
 
-Same target (fatal or serious accident), same features where possible, same test split:
+All runs predict a fatal or serious accident and are scored on the same test set. The main runs use a **spatial split**: Bangkok is divided into 2 km grid cells, and whole cells go to training (60%), calibration (20%) or testing (20%), so test areas have no neighbouring segments in training. `xgb_severe_random` repeats the default model with the old random split, for comparison.
 
-| Run | ROC-AUC | PR-AUC | Top-decile lift | Notes |
-|---|---|---|---|---|
-| `xgb_severe` | **0.981** | **0.421** | **9.7×** | Default model for the app |
-| `nb_severe` | 0.971 | 0.249 | 9.4× | Interpretable baseline; predicts expected accident counts |
-| `fcm_xgb_v4` | 0.087 | 0.005 | 0.1× | Experimental; see below |
+| Run | Split | ROC-AUC | PR-AUC | Top-decile lift | Brier | Notes |
+|---|---|---|---|---|---|---|
+| `xgb_severe` | spatial | **0.969** | **0.301** | **9.4×** | 0.0100 | Default model for the app |
+| `nb_severe` | spatial | 0.964 | 0.219 | 9.3× | 0.0103 | Interpretable baseline; predicts expected accident counts |
+| `xgb_severe_random` | random | 0.981 | 0.421 | 9.7× | 0.0066 | Comparison: segments assigned individually |
+| `fcm_xgb_v4` | random* | 0.087 | 0.005 | 0.1× | | Experimental; see below. *Not yet retrained with the spatial split |
 
-Each folder's `meta.json` holds the full metrics. Top-decile lift = accident rate in the 10% highest-scored segments divided by the overall rate (about 0.9% of segments had a fatal or serious accident).
+Each folder's `meta.json` holds the full metrics and the split's balance table (segments, accident segments and grid cells per part). Top-decile lift = accident rate in the 10% highest-scored segments divided by the overall rate (about 0.9% of segments had a fatal or serious accident).
 
 **How to read these numbers:**
 
 *   **The model mostly recognises fast, major roads.** 62% of segments with a fatal or serious accident are motorways or trunk roads, which make up only 4% of all segments. Road rank or average speed alone already reach an AUC of about 0.95. This matches road-safety knowledge (speed drives severity), but it may also partly reflect which accidents the MOT data records, so check the source's coverage before drawing conclusions about minor roads.
-*   **The split is random for now.** Neighbouring segments are very similar, so test segments have near-copies in training. A spatial split (planned) will give more honest, likely lower, scores.
+*   **Random vs spatial split.** With a random split, test segments have near-identical neighbours in training, which flatters the scores. On unseen areas, ranking barely drops (ROC-AUC 0.981 → 0.969): the main signal, fast major roads, works anywhere. Precision drops much more (PR-AUC 0.421 → 0.301): naming the exact accident segments was partly learned from neighbours. Calibration is also worse (Brier 0.0066 → 0.0100), because the test areas happen to have more accidents (1.20%) than the training areas (0.84%).
 *   **Earlier results were lower (AUC 0.86) because the old data was inconsistent.** The committed road segments and the accident snapping came from a different segmentation than the features, so about half of the accident labels sat on the wrong segments. A full rebuild from raw data fixed this (October 2026).
 
 **Why V4 fails:** its clustering assumes slow, congested roads are risky. Fatal and serious accidents happen mostly on fast, major roads, so V4 ranks roads almost exactly in reverse (AUC 0.09; flipped, it would score 0.91). An earlier version looked less bad only because accident-history columns leaked into its inputs.
