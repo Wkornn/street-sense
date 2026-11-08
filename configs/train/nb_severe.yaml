@@ -19,8 +19,10 @@ model:
     offset_unit: 100                 # -> model predicts accidents per 100 m of road
 
 split:                               # same split as xgb_severe, so metrics are comparable
-  method: random
-  cal_size: 0.2                      # not used by count models (no calibration needed)
+  method: spatial                    # whole 2 km grid cells go to train / cal / test
+  cell_size_m: 2000
+  segments: data/processed/road_segments.gpkg
+  cal_size: 0.2
   test_size: 0.2
   seed: 42
 
