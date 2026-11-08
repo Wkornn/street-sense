@@ -14,6 +14,7 @@ pipeline:
   train_configs:
     - configs/train/xgb_severe.yaml
     - configs/train/nb_severe.yaml
+    - configs/train/xgb_severe_random.yaml   # comparison: old random split
   
   # Global Settings
   force: false        # If false, skips work if output file already exists

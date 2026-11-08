@@ -23,7 +23,9 @@ model:
   calibration: isotonic              # isotonic or null (classifier plugins only)
 
 split:
-  method: random                     # TODO: spatial split (see to-do list)
+  method: spatial                    # whole 2 km grid cells go to train / cal / test
+  cell_size_m: 2000
+  segments: data/processed/road_segments.gpkg
   cal_size: 0.2
   test_size: 0.2
   seed: 42
