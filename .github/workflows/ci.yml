@@ -17,7 +17,7 @@ jobs:
 
       # Install the exact versions from uv.lock.
       - name: Install dependencies
-        run: uv sync --frozen
+        run: uv sync --locked
 
       # Code checks 
       - name: Ruff
