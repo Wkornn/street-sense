@@ -88,6 +88,7 @@ Every setting lives in `configs/`. Each file has one job:
 | `features.yaml` | Named feature sets used by training runs |
 | `train/*.yaml` | One file per training run: target, features, model, split, output folder |
 | `app.yaml` | Which trained model the dashboard serves (`model_dir`) and LLM narrative settings |
+| `tracking.yaml` | MLflow run tracking: on/off, database, experiment name |
 
 ### 3. Get the data
 See [Data](#-data) below for sources and licenses. The pipeline downloads OSM and MOT accident data itself; probe data is optional.
@@ -257,6 +258,21 @@ Each folder's `meta.json` holds the full metrics and the split's balance table (
 *   **Earlier results were lower (AUC 0.86) because the old data was inconsistent.** The committed road segments and the accident snapping came from a different segmentation than the features, so about half of the accident labels sat on the wrong segments. A full rebuild from raw data fixed this (October 2026).
 
 **Why V4 fails:** its clustering assumes slow, congested roads are risky. Fatal and serious accidents happen mostly on fast, major roads, so V4 ranks roads almost exactly in reverse (AUC 0.09; flipped, it would score 0.91). An earlier version looked less bad only because accident-history columns leaked into its inputs.
+
+### Tracking runs with MLflow
+
+Every training run is also recorded in MLflow (settings in `configs/tracking.yaml`): its parameters (model, hyperparameters, feature set, split), metrics, the split's balance table and the whole model folder. Retraining overwrites `models/<run>/`, but the history stays in MLflow.
+
+```bash
+uv run mlflow ui --backend-store-uri sqlite:///mlflow.db    # open http://localhost:5000
+```
+
+In the dashboard, pick the `street-sense` experiment, select runs and click **Compare** to see their metrics side by side (e.g. `xgb_severe` vs `xgb_severe_random`).
+
+*   Runs are stored locally in `mlflow.db`, with their files in `mlruns/` (both git-ignored).
+*   Turn tracking off with `enabled: false` in `configs/tracking.yaml`, or for one command with `STREET_SENSE_TRACKING=0`. Tests and CI run with it off.
+*   MLflow is in the `tracking` dependency group: `uv sync` installs it, the Docker app image doesn't. Without it, training still works and prints a note.
+*   The app keeps serving the folder in `configs/app.yaml`; MLflow is for history and comparison, not serving (a model registry with a "champion" alias is possible later).
 
 ### Switching the model the app serves
 
