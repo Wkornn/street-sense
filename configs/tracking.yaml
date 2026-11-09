@@ -1,0 +1,6 @@
+# Experiment tracking for training runs (MLflow). See src/modeling/tracking.py.
+# Dashboard: uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
+
+enabled: true
+uri: sqlite:///mlflow.db       # local database file (git-ignored)
+experiment: street-sense

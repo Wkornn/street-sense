@@ -6,7 +6,8 @@ Flow: config -> data -> target -> features -> split
       -> plugin.fit (model-specific) -> evaluate -> plugin.save + meta + risk scores
 
 Everything a run produces goes into output.model_dir, so the app can switch
-models by changing one line (model_dir) in configs/app.yaml.
+models by changing one line (model_dir) in configs/app.yaml. Each run is also
+recorded in MLflow (configs/tracking.yaml) for comparing runs over time.
 """
 
 import argparse
@@ -20,6 +21,7 @@ from src.modeling import data
 from src.modeling.config import load_config
 from src.modeling.evaluate import evaluate
 from src.modeling.models import get_plugin
+from src.modeling.tracking import log_run
 
 
 def run(cfg):
@@ -79,6 +81,11 @@ def run(cfg):
         Path(extra).parent.mkdir(parents=True, exist_ok=True)
         scores.to_parquet(extra, index=False)
     print(f"Saved model + risk scores -> {out_dir}/" + (f"  (copy: {extra})" if extra else ""))
+
+    # 6. Record the run (MLflow), after everything is saved so the model folder is complete
+    run_id = log_run(cfg, metrics, split_summary, out_dir)
+    if run_id:
+        print(f"Tracked in MLflow: run {run_id}")
     return metrics
 
 

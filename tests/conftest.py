@@ -5,6 +5,12 @@ import pandas as pd
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def no_tracking(monkeypatch):
+    """Tests don't write MLflow runs unless a test turns tracking on itself."""
+    monkeypatch.setenv("STREET_SENSE_TRACKING", "0")
+
+
 @pytest.fixture
 def toy_dataset():
     """2,000 fake road segments with a learnable risk pattern (fast, major roads are riskier)."""
