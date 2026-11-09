@@ -14,6 +14,7 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import yaml
 from shapely.geometry import LineString
 
 FEATURES_V2 = [
@@ -152,17 +153,17 @@ def make_road_segments(segment_ids, seed=42):
 
 
 def main():
-    features_dir = Path("data/processed/features")
-    processed_dir = Path("data/processed")
+    cfg = yaml.safe_load(Path("configs/data_sources.yaml").read_text(encoding="utf-8"))
+    features_dir = Path(cfg["features"]["output_dir"])
+    segments_path = Path(cfg["road_segments"]["output"])
     features_dir.mkdir(parents=True, exist_ok=True)
-    processed_dir.mkdir(parents=True, exist_ok=True)
+    segments_path.parent.mkdir(parents=True, exist_ok=True)
 
     df = make_model_dataset()
     dataset_path = features_dir / "model_dataset.parquet"
     df.to_parquet(dataset_path, index=False)
 
     segments = make_road_segments(df["segment_id"].tolist())
-    segments_path = processed_dir / "road_segments.gpkg"
     segments.to_file(segments_path, driver="GPKG")
 
     print(f"Prototype dataset saved -> {dataset_path} ({len(df)} rows)")

@@ -45,8 +45,13 @@ features:
   probe_speed_low_kmh: 20
   monsoon_months: [5, 6, 7, 8, 9, 10]
 
+probe:
+  raw_dir: "data/raw/iTIC_probe_data"          # downloaded monthly archives (deleted after extraction)
+  out_dir: "data/processed/probe_bangkok"      # Bangkok rows per month, read by feat_probe.py
+
 osm:
   place: "Bangkok, Thailand"
+  schema_output: "data/raw/osm/osm_schema.csv"  # written by explore_osm_tags.py
   layers:
     - name: roads
       output_path: "data/raw/osm/osm_roads.gpkg"

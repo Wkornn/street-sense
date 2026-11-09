@@ -2,13 +2,14 @@
 Exploration script — run this to see what VALUES each OSM key has in Bangkok.
 Use the output to decide what values to put in configs/data_sources.yaml.
 
-Output: data/raw/osm_schema.csv
+Output: osm.schema_output in configs/data_sources.yaml
 """
 import os
 
 import osmnx as ox
 import pandas as pd
 import requests
+import yaml
 
 SAMPLE_PLACE = "Bangkok, Thailand"
 
@@ -60,7 +61,8 @@ def main():
             print(f"    {val:<35} {count}")
             all_pairs.append({"key": key, "value": val, "count": count})
 
-    output_path = "data/raw/osm/osm_schema.csv"
+    with open("configs/data_sources.yaml", encoding="utf-8") as f:
+        output_path = yaml.safe_load(f)["osm"]["schema_output"]
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     pd.DataFrame(all_pairs).to_csv(output_path, index=False)

@@ -28,11 +28,12 @@ def load_config(path=CONFIG_PATH):
         cfg = yaml.safe_load(f)
     seg = cfg["road_segments"]
     feat = cfg["features"]
+    osm_layers = {layer["name"]: layer["output_path"] for layer in cfg["osm"]["layers"]}
     return {
         "segments":      seg["output"],
         "intersections": seg["intersections_output"],
-        "poi":           "data/raw/osm/osm_poi.gpkg",
-        "buildings":     "data/raw/osm/osm_buildings.gpkg",
+        "poi":           osm_layers["poi"],
+        "buildings":     osm_layers["buildings"],
         "output_dir":    feat["output_dir"],
         "buffer_m":      feat["buffer_m"],
         "crs":           seg["projected_crs"],

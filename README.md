@@ -379,11 +379,38 @@ street-sense/
 
 ---
 
+## ⚠️ Limitations
+
+*   **The model mostly recognises fast, major roads.** 62% of segments with a fatal or serious accident are motorways or trunk roads (4% of all segments), and road rank or speed alone reach an AUC of about 0.95. It is good at flagging dangerous *kinds* of road, and less precise at naming the exact segment (PR-AUC 0.30 on unseen areas).
+*   **"No recorded accident" is not "safe".** Severe accidents are rare random events, quiet roads have little traffic exposure, and some accidents are not recorded. Some segments labelled 0 are dangerous, so part of what the evaluation counts as false positives may be real hidden risk.
+*   **Data coverage.** The MOT records may cover some road types better than others (e.g. national highways), which could exaggerate the major-road pattern. Check the source's coverage before drawing conclusions about minor roads.
+*   **Evaluation.** The spatial split holds out whole 2 km areas, but segments on cell borders still have neighbours across the edge. There is no validation over time yet (predicting future accidents).
+*   **Calibration on new areas.** Test areas had more accidents (1.20%) than training areas (0.84%), so predicted probabilities on new areas are less reliable than the ranking.
+*   **Reproducibility across systems.** The lockfile gives identical results on the same operating system; macOS and Linux builds of XGBoost differ slightly, so retrained models are close but not bit-identical (Docker runs the same image everywhere).
+*   **Probe data is required for training.** Both feature sets use traffic features; without probe data the dataset builds, but training stops until a feature set without traffic columns is added.
+
+## 🔭 Future Work
+
+**Modeling**
+
+*   **Temporal validation:** train on 2019–2023, test on 2024–2025, to check whether flagged roads, including ones without past accidents, see accidents later. The most direct test of the "hidden risk" claim.
+*   **Traffic exposure:** use probe volume as an exposure offset (accidents per amount of traffic, not just per road length), and Empirical Bayes estimates that combine model predictions with observed counts.
+*   **Calibration fixes:** the isotonic step gives `risk_score = 1.0` to a few segments (too few examples in its top step); the negative binomial model slightly overestimates average risk.
+*   **Split robustness:** report scores over several seeds and cell sizes (1 / 2 / 5 km).
+
+**Engineering**
+
+*   **Logging:** replace `print` with the `logging` module (levels, timestamps, a log file for long pipeline runs).
+*   **Model registry:** register models in MLflow and let the app load a `champion` alias instead of a folder.
+*   **Serving:** a FastAPI endpoint (`GET /risk?lat=&lon=`) and a public deployment of the dashboard.
+*   **Automation:** a pre-commit hook that re-exports `requirements.txt`; require green CI before merging.
+*   **Repository size:** remove the ~230 MB of data files from git history.
+
 ## 🛠️ Tech Stack
 *   **Geospatial:** GeoPandas, OSMnx, Shapely, PyDeck
-*   **Machine Learning:** XGBoost, Scikit-Learn (calibration), Statsmodels (count models)
+*   **Machine Learning:** XGBoost, Scikit-Learn (calibration), Statsmodels (count models), MLflow (run tracking)
 *   **Visualization:** Streamlit
-*   **LLM Integration:** Google Gemini (for risk narratives)
+*   **LLM Integration:** Google Gemini via `google-genai` (for risk narratives)
 
 ---
 

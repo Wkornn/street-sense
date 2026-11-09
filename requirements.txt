@@ -19,6 +19,8 @@ annotated-types==0.8.0
     # via pydantic
 anyio==4.16.0
     # via
+    #   google-genai
+    #   httpx
     #   mlflow-skinny
     #   starlette
 attrs==26.1.0
@@ -38,6 +40,8 @@ cachetools==7.2.8
 certifi==2026.10.23
     # via
     #   databricks-sdk
+    #   httpcore
+    #   httpx
     #   pyogrio
     #   pyproj
     #   requests
@@ -72,6 +76,8 @@ databricks-sdk==0.162.0
     # via
     #   mlflow-skinny
     #   mlflow-tracing
+distro==1.9.0
+    # via google-genai
 docker==7.2.0
     # via mlflow
 fastapi==0.162.2
@@ -98,31 +104,12 @@ gitpython==3.2.1
     # via
     #   mlflow-skinny
     #   streamlit
-google-ai-generativelanguage==0.6.10
-    # via google-generativeai
-google-api-core==2.30.3
-    # via
-    #   google-ai-generativelanguage
-    #   google-api-python-client
-    #   google-generativeai
-google-api-python-client==2.201.0
-    # via google-generativeai
 google-auth==2.62.1
     # via
     #   databricks-sdk
-    #   google-ai-generativelanguage
-    #   google-api-core
-    #   google-api-python-client
-    #   google-auth-httplib2
-    #   google-generativeai
-google-auth-httplib2==0.4.4
-    # via google-api-python-client
-google-generativeai==0.8.3
+    #   google-genai
+google-genai==1.75.0
     # via street-sense
-googleapis-common-protos==1.75.0
-    # via
-    #   google-api-core
-    #   grpcio-status
 graphene==3.4
     # via mlflow
 graphql-core==3.2.14
@@ -131,25 +118,22 @@ graphql-core==3.2.14
     #   graphql-relay
 graphql-relay==3.2.0
     # via graphene
-grpcio==1.85.1
-    # via
-    #   google-api-core
-    #   grpcio-status
-grpcio-status==1.71.2
-    # via google-api-core
 gunicorn==26.2.0 ; sys_platform != 'win32'
     # via mlflow
 h11==0.16.0
-    # via uvicorn
-httplib2==0.32.1
     # via
-    #   google-api-python-client
-    #   google-auth-httplib2
+    #   httpcore
+    #   uvicorn
+httpcore==1.0.9
+    # via httpx
+httpx==0.28.1
+    # via google-genai
 huey==3.5.4
     # via mlflow
 idna==3.20
     # via
     #   anyio
+    #   httpx
     #   requests
     #   yarl
 imbalanced-learn==0.14.1
@@ -279,22 +263,12 @@ propcache==0.5.4
     # via
     #   aiohttp
     #   yarl
-proto-plus==1.28.2
-    # via
-    #   google-ai-generativelanguage
-    #   google-api-core
 protobuf==5.29.6
     # via
     #   databricks-sdk
-    #   google-ai-generativelanguage
-    #   google-api-core
-    #   google-generativeai
-    #   googleapis-common-protos
-    #   grpcio-status
     #   mlflow-skinny
     #   mlflow-tracing
     #   opentelemetry-proto
-    #   proto-plus
     #   streamlit
 pyarrow==23.0.1
     # via
@@ -310,7 +284,7 @@ pycparser==3.12 ; implementation_name != 'PyPy' and platform_python_implementati
 pydantic==2.14.2
     # via
     #   fastapi
-    #   google-generativeai
+    #   google-genai
     #   mlflow-skinny
     #   mlflow-tracing
 pydantic-core==2.50.2
@@ -326,9 +300,7 @@ pyogrio==0.11.1
     #   geopandas
     #   street-sense
 pyparsing==3.3.3
-    # via
-    #   httplib2
-    #   matplotlib
+    # via matplotlib
 pyproj==3.7.2
     # via geopandas
 pytest==9.2.0
@@ -359,7 +331,8 @@ requests==2.31.0
     # via
     #   databricks-sdk
     #   docker
-    #   google-api-core
+    #   google-auth
+    #   google-genai
     #   mlflow-skinny
     #   osmnx
     #   streamlit
@@ -397,6 +370,8 @@ skops==0.16.0
     # via mlflow
 smmap==5.0.3
     # via gitdb
+sniffio==1.3.1
+    # via google-genai
 sqlalchemy==2.1.8
     # via
     #   alembic
@@ -412,8 +387,10 @@ statsmodels==0.14.6
     # via street-sense
 streamlit==1.56.0
     # via street-sense
-tenacity==9.2.1
-    # via streamlit
+tenacity==9.1.4
+    # via
+    #   google-genai
+    #   streamlit
 threadpoolctl==3.7.0
     # via
     #   imbalanced-learn
@@ -424,7 +401,6 @@ tornado==6.6
     # via streamlit
 tqdm==4.67.1
     # via
-    #   google-generativeai
     #   optuna
     #   street-sense
 typing-extensions==4.16.0
@@ -435,9 +411,8 @@ typing-extensions==4.16.0
     #   altair
     #   anyio
     #   fastapi
-    #   google-generativeai
+    #   google-genai
     #   graphene
-    #   grpcio
     #   mlflow-skinny
     #   opentelemetry-api
     #   opentelemetry-sdk
@@ -457,8 +432,6 @@ tzdata==2026.6
     # via
     #   pandas
     #   python-dateutil
-uritemplate==4.2.0
-    # via google-api-python-client
 urllib3==2.8.0
     # via
     #   databricks-sdk
@@ -472,6 +445,8 @@ watchdog==6.0.0 ; sys_platform != 'darwin'
     # via streamlit
 wcwidth==0.9.4
     # via prettytable
+websockets==16.1.1
+    # via google-genai
 werkzeug==3.1.9
     # via
     #   flask

@@ -27,7 +27,7 @@ def load_config(path=CONFIG_PATH):
     feat = cfg["features"]
     return {
         "segments":    seg["output"],
-        "probe_dir":   "data/processed/probe_bangkok",
+        "probe_dir":   cfg["probe"]["out_dir"],
         "output_dir":  feat["output_dir"],
         "crs":         seg["projected_crs"],
         "speed_low":   feat["probe_speed_low_kmh"],
