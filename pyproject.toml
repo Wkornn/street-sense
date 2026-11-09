@@ -47,10 +47,15 @@ dev = [
     "ruff>=0.17,<0.18",
 ]
 
+tracking = [
+    "mlflow>=3.18,<4",
+]
+
 # Exact versions used to lock: the Mac environment that trained the current models (2026-11).
 # The ranges in [project] say what the code is compatible with; these decide what gets locked.
 # To upgrade on purpose: change or remove a line, run `uv lock`, retrain, compare the metrics.
 [tool.uv]
+default-groups = ["dev", "tracking"]
 constraint-dependencies = [
     "streamlit==1.56.0",
     "pydeck==0.9.2",
@@ -74,6 +79,7 @@ constraint-dependencies = [
     "imbalanced-learn==0.14.1",
     "optuna==4.8.0",
     "pytest==9.2.0",
+    "mlflow==3.18.0",
 ]
 
 [tool.setuptools.packages.find]

@@ -7,10 +7,10 @@ WORKDIR /app
 # Install dependencies before copying the code, so this slow layer stays cached
 # when only the code changes.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-default-groups --no-install-project
 
 COPY . .
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-default-groups
 
 ENV PATH="/app/.venv/bin:$PATH"
 
