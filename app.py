@@ -26,15 +26,16 @@ st.set_page_config(page_title="H-Spot Bangkok", layout="wide", initial_sidebar_s
 DATA_CFG_PATH  = "configs/data_sources.yaml"
 APP_CFG_PATH   = "configs/app.yaml"
 
-SEGMENTS_PATH = Path("data/processed/road_segments.gpkg")
-MODEL_DATASET_PATH = Path("data/processed/features/model_dataset.parquet")
+with open(DATA_CFG_PATH, encoding="utf-8") as _f:
+    _data_cfg = yaml.safe_load(_f)
+SEGMENTS_PATH = Path(_data_cfg["road_segments"]["output"])
+MODEL_DATASET_PATH = Path(_data_cfg["features"]["output_dir"]) / "model_dataset.parquet"
+SNAPPED_ACCIDENTS_PATH = Path(_data_cfg["road_segments"]["snapped_accidents_output"])
 
 with open(APP_CFG_PATH, encoding="utf-8") as _f:
     MODEL_DIR = Path(yaml.safe_load(_f)["model_dir"])
 MODEL_META_PATH = MODEL_DIR / "meta.json"
 RISK_SCORES_PATH = MODEL_DIR / "risk_scores.parquet"   # written by train.py next to the model
-with open(DATA_CFG_PATH, encoding="utf-8") as _f:
-    SNAPPED_ACCIDENTS_PATH = Path(yaml.safe_load(_f)["road_segments"]["snapped_accidents_output"])
 
 DATA_ACKNOWLEDGEMENT = (
     "Data: OpenStreetMap contributors (ODbL), Ministry of Transport Data Catalog, "

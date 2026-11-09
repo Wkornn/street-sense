@@ -8,8 +8,6 @@ import yaml
 from geopandas import points_from_xy
 
 BASE_URL = "https://itic.longdo.com/opendata/probe-data"
-RAW_DIR = "data/raw/iTIC_probe_data"
-OUT_DIR = "data/processed/probe_bangkok"
 
 PROBE_COLS = ["vehicle_id", "gps_valid", "lat", "lon", "timestamp",
               "speed", "heading", "for_hire_light", "engine_acc"]
@@ -76,14 +74,14 @@ def load_config(config_path="configs/data_sources.yaml"):
 
 
 def main():
-    os.makedirs(RAW_DIR, exist_ok=True)
-    os.makedirs(OUT_DIR, exist_ok=True)
-
-    config = load_config("configs/data_inventory.yaml")
-    years = [d["year"] for d in config["datasets"]]
-
     config = load_config("configs/data_sources.yaml")
+    raw_dir, out_dir = config["probe"]["raw_dir"], config["probe"]["out_dir"]
+    os.makedirs(raw_dir, exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
     boundary, bbox = load_boundary(config["boundary"]["bangkok"])
+
+    inventory = load_config("configs/data_inventory.yaml")
+    years = [d["year"] for d in inventory["datasets"]]
 
     files = [
         f"PROBE-{year}{month:02d}.tar.bz2"
@@ -95,8 +93,8 @@ def main():
 
     for filename in files:
         stem = filename.replace(".tar.bz2", "")
-        tar_path = os.path.join(RAW_DIR, filename)
-        out_path = os.path.join(OUT_DIR, f"{stem}.parquet")
+        tar_path = os.path.join(raw_dir, filename)
+        out_path = os.path.join(out_dir, f"{stem}.parquet")
 
         # Already extracted — skip entirely
         if os.path.exists(out_path):
@@ -125,7 +123,7 @@ def main():
         except (tarfile.TarError, EOFError, OSError, pd.errors.ParserError, ValueError) as e:
             print(f"  Extraction failed: {e}")
 
-    print(f"\nDone → {OUT_DIR}")
+    print(f"\nDone → {out_dir}")
 
 
 if __name__ == "__main__":
