@@ -30,9 +30,9 @@ jobs:
       # requirements.txt match uv.lock
       - name: requirements.txt is up to date
         run: |
-          uv export --frozen --format requirements-txt --no-hashes -o requirements.txt
+          uv export --format requirements-txt --no-hashes -o requirements.txt
           git diff --exit-code requirements.txt
-
+        
   docker:
     runs-on: ubuntu-latest
     steps:
